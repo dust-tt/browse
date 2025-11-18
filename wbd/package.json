@@ -1,0 +1,25 @@
+{
+  "name": "wbd",
+  "version": "1.0.0",
+  "description": "Browse Daemon - Server daemon for web browsing automation with Stagehand",
+  "main": "dist/index.js",
+  "bin": {
+    "wbd": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@browse/common": "*",
+    "@browserbasehq/stagehand": "^1.5.0",
+    "@trpc/server": "^10.45.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

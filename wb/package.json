@@ -1,0 +1,24 @@
+{
+  "name": "wb",
+  "version": "1.0.0",
+  "description": "Browse CLI - Command-line interface for web browsing automation",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "bin": {
+    "wb": "./dist/index.js"
+  },
+  "dependencies": {
+    "@browse/common": "*",
+    "@trpc/client": "^10.45.0",
+    "commander": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

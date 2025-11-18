@@ -1,0 +1,181 @@
+import { BrowserError, err, ok, Result } from "@browse/common/error";
+import { ClientSocket } from "./socket";
+import { isNamedTab, isTab, SessionMethod, Tab } from "@browse/common/types";
+import { SESSION_DIR } from "@browse/common/constants";
+import fs from "fs";
+import path from "path";
+
+export class BrowserController {
+  private socket: ClientSocket;
+  private static instance: BrowserController;
+
+  private constructor(public sessionName: string = "default") {
+    this.socket = new ClientSocket(sessionName);
+  }
+
+  static async initialize(
+    sessionName: string = "default",
+  ): Promise<Result<void, BrowserError>> {
+    if (
+      !BrowserController.instance ||
+      BrowserController.instance.sessionName !== sessionName
+    ) {
+      BrowserController.instance = new BrowserController(sessionName);
+      return await BrowserController.instance.socket.connect();
+    } else {
+      return ok(undefined);
+    }
+  }
+
+  static end() {
+    BrowserController.instance.socket.end();
+  }
+
+  static async deleteSession() {
+    await BrowserController.instance.socket.deleteSession();
+  }
+
+  static listSessions(): { name: string; isRunning: boolean }[] {
+    BrowserController.end();
+    return fs.readdirSync(SESSION_DIR).map((sessionName) => {
+      return {
+        name: sessionName,
+        isRunning: fs.existsSync(path.join(SESSION_DIR, sessionName, "sock")),
+      };
+    });
+  }
+
+  private static send(
+    method: SessionMethod,
+    params?: any,
+  ): Promise<Result<unknown, BrowserError>> {
+    const res = BrowserController.instance.socket.send(method, params);
+    BrowserController.end();
+    return res;
+  }
+
+  static async runtimeSeconds(): Promise<Result<number, BrowserError>> {
+    const res = await BrowserController.send("runtimeSeconds");
+    if (res.isErr()) {
+      return res;
+    } else if (typeof res.value !== "number") {
+      return err(`Got non-number response: ${JSON.stringify(res)}`);
+    } else {
+      return ok(res.value);
+    }
+  }
+
+  static async getTab(tabName: string): Promise<Result<Tab, BrowserError>> {
+    const res = await BrowserController.send("getTab", {
+      tabName,
+    });
+    if (res.isErr()) {
+      return res;
+    } else if (!isTab(res.value)) {
+      return err(`Got non-tab response: ${JSON.stringify(res)}`);
+    } else {
+      return ok(res.value);
+    }
+  }
+
+  static async listTabs(): Promise<Result<string[], BrowserError>> {
+    const res = await BrowserController.send("listTabs");
+    if (res.isErr()) {
+      return res;
+    } else if (
+      !Array.isArray(res.value) ||
+      res.value.some((v) => typeof v !== "string")
+    ) {
+      return err(`Got non-array response: ${JSON.stringify(res)}`);
+    } else {
+      return ok(res.value);
+    }
+  }
+
+  static async getCurrentTab(): Promise<
+    Result<Tab & { tabName: string }, BrowserError>
+  > {
+    const res = await BrowserController.send("getCurrentTab");
+    if (res.isErr()) {
+      return res;
+    }
+    if (!isNamedTab(res.value)) {
+      return err(`Got non-tab response: ${JSON.stringify(res)}`);
+    }
+    return ok(res.value);
+  }
+
+  static async setCurrentTab(
+    tabName: string,
+  ): Promise<Result<void, BrowserError>> {
+    const res = await BrowserController.send("setCurrentTab", {
+      tabName,
+    });
+    if (res.isErr()) {
+      return res;
+    } else {
+      return ok(undefined);
+    }
+  }
+
+  static async newTab(
+    tabName: string,
+    url: string,
+  ): Promise<Result<Tab, BrowserError>> {
+    const res = await BrowserController.send("newTab", {
+      tabName,
+      url,
+    });
+    if (res.isErr()) {
+      return res;
+    } else if (!isTab(res.value)) {
+      return err(`Got non-tab response: ${JSON.stringify(res)}`);
+    } else {
+      return ok(res.value);
+    }
+  }
+
+  static async closeTab(tabName: string): Promise<Result<void, BrowserError>> {
+    const res = await BrowserController.send("closeTab", {
+      tabName,
+    });
+    if (res.isErr()) {
+      return res;
+    } else {
+      return ok(undefined);
+    }
+  }
+
+  static async dump(
+    html: boolean = false,
+  ): Promise<Result<string, BrowserError>> {
+    const res = await BrowserController.send("dump", { html });
+    if (res.isErr()) {
+      return res;
+    } else if (typeof res.value !== "string") {
+      return err(`Got non-string response: ${JSON.stringify(res)}`);
+    } else {
+      return ok(res.value);
+    }
+  }
+  static async go(url: string): Promise<Result<void, BrowserError>> {
+    const res = await BrowserController.send("go", { url });
+    if (res.isErr()) {
+      return res;
+    } else {
+      return ok(undefined);
+    }
+  }
+  static async interact(
+    instructions: string,
+  ): Promise<Result<void, BrowserError>> {
+    const res = await BrowserController.send("interact", {
+      instructions,
+    });
+    if (res.isErr()) {
+      return res;
+    } else {
+      return ok(undefined);
+    }
+  }
+}
