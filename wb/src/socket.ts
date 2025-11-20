@@ -10,47 +10,40 @@ import {
   SessionMethod,
 } from "@browse/common/types";
 
+function socketPath(sessionName: string): string {
+  return path.join(SESSION_DIR, sessionName, "sock");
+}
+
 export class ClientSocket {
-  private clientSocket?: net.Socket;
-  private socketPath: string;
   private pendingResponse:
     | ((response: Result<unknown, BrowserError>) => void)
     | null = null;
   private result: Result<unknown, BrowserError> | null = null;
-  private get client(): net.Socket {
+  private buffer: string = "";
+  private client: net.Socket;
+
+  constructor(public sessionName: string) {
     try {
-      const socket =
-        this.clientSocket ??
-        net.createConnection(this.socketPath, () => {
-          // console.log("Connected to UNIX socket server");
-        });
-      this.clientSocket = socket;
-      return socket;
+      this.client = net.createConnection(socketPath(sessionName));
+      this.setupListeners();
     } catch (e: any) {
       throw new Error(`Failed to connect to UNIX socket: ${e}`);
     }
   }
 
-  constructor(public sessionName: string) {
-    this.socketPath = path.join(SESSION_DIR, sessionName, "sock");
+  static async ensureSession(
+    sessionName: string,
+  ): Promise<Result<void, BrowserError>> {
+    return !fs.existsSync(socketPath(sessionName))
+      ? await ClientSocket.createSession(sessionName)
+      : ok(undefined);
   }
 
-  async connect(): Promise<Result<void, BrowserError>> {
-    if (!fs.existsSync(this.socketPath)) {
-      console.log(`Starting session ${this.sessionName}`);
-      const res = await this.createSession();
-      if (res.isErr()) {
-        return res;
-      }
-    }
-    const _ = this.client; // Connect to the socket
-    this.setupListeners();
-    return ok(undefined);
-  }
-
-  async createSession(): Promise<Result<void, BrowserError>> {
+  static async createSession(
+    sessionName: string,
+  ): Promise<Result<void, BrowserError>> {
     // Spawn the browser process in detached mode to orphan it
-    const child = spawn("wbd", ["-s", this.sessionName], {
+    const child = spawn("wbd", ["-s", sessionName], {
       detached: true,
       stdio: "ignore",
     });
@@ -66,10 +59,10 @@ export class ClientSocket {
     do {
       await new Promise((resolve) => setTimeout(resolve, checkInterval));
       elapsed += checkInterval;
-    } while (!fs.existsSync(this.socketPath) && elapsed < maxWaitTime);
+    } while (!fs.existsSync(socketPath(sessionName)) && elapsed < maxWaitTime);
 
-    if (!fs.existsSync(this.socketPath)) {
-      return err(`Session ${this.sessionName} failed to start`);
+    if (!fs.existsSync(socketPath(sessionName))) {
+      return err(`Session ${sessionName} failed to start`);
     }
     return ok(undefined);
   }
@@ -80,8 +73,8 @@ export class ClientSocket {
 
   async deleteSession() {
     await this.send("deleteSession");
-    if (fs.existsSync(this.socketPath)) {
-      fs.unlinkSync(this.socketPath);
+    if (fs.existsSync(socketPath(this.sessionName))) {
+      fs.unlinkSync(socketPath(this.sessionName));
     }
   }
 
@@ -110,7 +103,7 @@ export class ClientSocket {
             reject(new Error("Request timeout"));
           }
         },
-        method === "deleteSession" ? 100 : 30000,
+        method === "deleteSession" ? 100 : 60000,
       ); // 30 second timeout (only need to wait for a bit for deleteSession)
 
       // Clear timeout when response is received
@@ -135,18 +128,27 @@ export class ClientSocket {
     }
   }
 
-  private setupListeners() {
-    this.client.on("data", (data) => {
-      if (!this.pendingResponse) {
-        return;
-      }
-      const response = JSON.parse(data.toString());
+  private recieveData(data: Buffer<ArrayBuffer>): void {
+    if (!this.pendingResponse) {
+      return;
+    }
+    this.buffer += data.toString();
+
+    try {
+      const response = JSON.parse(this.buffer);
       if (!isResponse(response)) {
         this.pendingResponse(err(`Invalid response from server: ${response}`));
       }
 
       this.pendingResponse(responseToResult(response));
       this.pendingResponse = null;
-    });
+      this.buffer = "";
+    } catch (_) {
+      // Incomplete JSON, waiting for more data
+    }
+  }
+
+  private setupListeners() {
+    this.client.on("data", (d) => this.recieveData(d));
   }
 }

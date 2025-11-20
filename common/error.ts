@@ -30,7 +30,7 @@ export class Err<E> {
   }
 
   toString(): string {
-    return `Error: ${prettyString(this.error)}`;
+    return `Error: ${String(this.error)}`;
   }
 
   [Symbol.for("nodejs.util.inspect.custom")](): string {

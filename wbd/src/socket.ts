@@ -4,11 +4,12 @@ import { SESSION_DIR } from "@browse/common/constants";
 import path from "path";
 import { Session } from "./session";
 import { resultToResponse } from "@browse/common/types";
-import { prettyString } from "@browse/common/error";
+import { BrowserError, prettyString, Result } from "@browse/common/error";
 
 export class ServerSocket {
   private server: net.Server;
   private socketPath: string;
+  private result?: Result<unknown, BrowserError>;
 
   constructor(public sessionName: string = "default") {
     const socketDirPath = path.join(SESSION_DIR, sessionName);
@@ -21,19 +22,28 @@ export class ServerSocket {
     }
     this.server = net.createServer((client) => {
       client.on("data", (data) => {
-        (async () => {
-          const req = JSON.parse(data.toString());
-          console.log(`Received request:\n${prettyString(req)}`);
-          if (!req.method || !req.params) {
-            throw new Error(
-              `Invalid request: method and params are required, got: ${data.toString()}`,
-            );
-          }
-          const result = await Session.call(req.method, req.params);
-          client.write(JSON.stringify(resultToResponse(result)));
-        })();
+        const req = JSON.parse(data.toString());
+        console.log(`Received request:\n${prettyString(req)}`);
+        if (!req.method || !req.params) {
+          throw new Error(
+            `Invalid request: method and params are required, got: ${data.toString()}`,
+          );
+        }
+        this.handleRequest(req.method, req.params, client).catch((e) =>
+          console.error(e),
+        );
       });
     });
+  }
+
+  async handleRequest(
+    method: string,
+    params: any,
+    client: net.Socket,
+  ): Promise<void> {
+    const result = await Session.call(method, params);
+    console.log(`Result:\n${prettyString(result)}`);
+    client.write(JSON.stringify(resultToResponse(result)));
   }
 
   listen() {

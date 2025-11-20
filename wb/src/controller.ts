@@ -8,6 +8,9 @@ import path from "path";
 export class BrowserController {
   private socket: ClientSocket;
   private static instance: BrowserController;
+  private static get socket() {
+    return BrowserController.instance.socket;
+  }
 
   private constructor(public sessionName: string = "default") {
     this.socket = new ClientSocket(sessionName);
@@ -20,23 +23,21 @@ export class BrowserController {
       !BrowserController.instance ||
       BrowserController.instance.sessionName !== sessionName
     ) {
-      BrowserController.instance = new BrowserController(sessionName);
-      return await BrowserController.instance.socket.connect();
-    } else {
-      return ok(undefined);
+      const res = await ClientSocket.ensureSession(sessionName);
+      if (res.isErr()) {
+        return res;
+      }
+      try {
+        BrowserController.instance = new BrowserController(sessionName);
+      } catch (e: any) {
+        return err(e);
+      }
     }
-  }
-
-  static end() {
-    BrowserController.instance.socket.end();
-  }
-
-  static async deleteSession() {
-    await BrowserController.instance.socket.deleteSession();
+    return ok(undefined);
   }
 
   static listSessions(): { name: string; isRunning: boolean }[] {
-    BrowserController.end();
+    BrowserController.socket.end();
     return fs.readdirSync(SESSION_DIR).map((sessionName) => {
       return {
         name: sessionName,
@@ -45,12 +46,16 @@ export class BrowserController {
     });
   }
 
-  private static send(
+  static async deleteSession() {
+    await BrowserController.socket.deleteSession();
+  }
+
+  static async send(
     method: SessionMethod,
-    params?: any,
+    params?: unknown,
   ): Promise<Result<unknown, BrowserError>> {
-    const res = BrowserController.instance.socket.send(method, params);
-    BrowserController.end();
+    const res = await BrowserController.instance.socket.send(method, params);
+    BrowserController.socket.end();
     return res;
   }
 
@@ -60,19 +65,6 @@ export class BrowserController {
       return res;
     } else if (typeof res.value !== "number") {
       return err(`Got non-number response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
-    }
-  }
-
-  static async getTab(tabName: string): Promise<Result<Tab, BrowserError>> {
-    const res = await BrowserController.send("getTab", {
-      tabName,
-    });
-    if (res.isErr()) {
-      return res;
-    } else if (!isTab(res.value)) {
-      return err(`Got non-tab response: ${JSON.stringify(res)}`);
     } else {
       return ok(res.value);
     }
@@ -148,8 +140,9 @@ export class BrowserController {
 
   static async dump(
     html: boolean = false,
+    offset: number = 0,
   ): Promise<Result<string, BrowserError>> {
-    const res = await BrowserController.send("dump", { html });
+    const res = await BrowserController.send("dump", { html, offset });
     if (res.isErr()) {
       return res;
     } else if (typeof res.value !== "string") {
@@ -158,12 +151,26 @@ export class BrowserController {
       return ok(res.value);
     }
   }
+
   static async go(url: string): Promise<Result<void, BrowserError>> {
     const res = await BrowserController.send("go", { url });
     if (res.isErr()) {
       return res;
     } else {
       return ok(undefined);
+    }
+  }
+  static async observe(): Promise<Result<string[], BrowserError>> {
+    const res = await BrowserController.send("observe");
+    if (res.isErr()) {
+      return res;
+    } else if (
+      !Array.isArray(res.value) ||
+      res.value.some((v) => typeof v !== "string")
+    ) {
+      return err(`Got non-array response: ${JSON.stringify(res)}`);
+    } else {
+      return ok(res.value);
     }
   }
   static async interact(
