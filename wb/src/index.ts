@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import { BrowserController } from "./controller";
+import { ClientSocket } from "./socket";
 
 const program = new Command();
 
@@ -12,7 +13,8 @@ program
   )
   .hook("preAction", async (thisCommand) => {
     const options = thisCommand.opts();
-    const res = await BrowserController.initialize(options.session);
+    BrowserController.initialize(options.session);
+    const res = await ClientSocket.ensureSession(options.session);
     if (res.isErr()) {
       console.error(res.error);
       process.exit(1);
@@ -48,10 +50,11 @@ program
 
 program
   .command("dump")
-  .description("Dump the current tab")
+  .description("Dump the current tab (max 8196 characters)")
   .option("-h, --html", "Dump as HTML")
+  .option("-o, --offset <offset>", "Offset to start dumping from")
   .action(async (options) => {
-    const res = await BrowserController.dump(options.html);
+    const res = await BrowserController.dump(options.html, options.offset);
     console.log(res);
     process.exit(0);
   });
@@ -72,6 +75,15 @@ program
   .argument("<instructions>", "Instructions to interact with")
   .action(async (instructions) => {
     const res = await BrowserController.interact(instructions);
+    console.log(res);
+    process.exit(0);
+  });
+
+program
+  .command("observe")
+  .description("Observe the current tab")
+  .action(async () => {
+    const res = await BrowserController.observe();
     console.log(res);
     process.exit(0);
   });

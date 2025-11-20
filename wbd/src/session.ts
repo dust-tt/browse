@@ -9,11 +9,14 @@ import {
 } from "./types";
 import { ServerSocket } from "./socket";
 import { Page, Stagehand } from "@browserbasehq/stagehand";
+import Firecrawl from "firecrawl";
 import {
   safeClose,
   safeContent,
   safeGoto,
+  safeInteract,
   safeNewPage,
+  safeObserve,
 } from "./stagehand_utils";
 import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
@@ -28,6 +31,7 @@ export class Session {
   public currentTab?: string;
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
+  private firecrawl: Firecrawl;
   private get ctx() {
     return Session.instance.stagehand.context;
   }
@@ -44,6 +48,7 @@ export class Session {
         userDataDir: dataDir,
       },
     });
+    this.firecrawl = new Firecrawl({ apiKey: process.env.FIRECRAWL_API_KEY });
   }
 
   static async call(
@@ -80,7 +85,7 @@ export class Session {
         }
       case "dump":
         if (isDumpInput(params)) {
-          const res = await Session.dump(params.html);
+          const res = await Session.dump(params.html, params.offset);
           console.log(res);
           return res;
         } else {
@@ -92,6 +97,8 @@ export class Session {
         } else {
           return err("Invalid parameters");
         }
+      case "observe":
+        return await Session.observe();
       case "interact":
         if (isInteractInput(params)) {
           return Session.interact(params.instructions);
@@ -199,13 +206,36 @@ export class Session {
     }
   }
 
-  static async dump(_html: boolean): Promise<Result<string, BrowserError>> {
+  static async dump(
+    html: boolean,
+    offset: number = 0,
+  ): Promise<Result<string, BrowserError>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
+    let text: string;
+    if (html) {
+      const page = Session.instance.stagehandPages[Session.instance.currentTab];
+      const res = await safeContent(page);
+      if (res.isErr()) {
+        return res;
+      }
+      text = res.value;
+    } else {
+      const url = Session.instance.tabs[Session.instance.currentTab].url;
+      const scrapeResponse = await Session.instance.firecrawl.scrapeUrl(url, {
+        // By default cache-expiry is already set to 2 days.
+        formats: ["markdown"],
+      });
 
-    const page = Session.instance.stagehandPages[Session.instance.currentTab];
-    return safeContent(page);
+      if (scrapeResponse.success) {
+        text = scrapeResponse.markdown ?? "";
+      } else {
+        return err(scrapeResponse.error);
+      }
+    }
+
+    return ok(text.slice(offset, 8196 + offset));
   }
 
   static async go(url: string): Promise<Result<void, BrowserError>> {
@@ -222,10 +252,26 @@ export class Session {
     Session.instance.stagehandPages[Session.instance.currentTab] = page;
     return ok(undefined);
   }
+
+  static async observe(): Promise<Result<string[], BrowserError>> {
+    if (!Session.instance.currentTab) {
+      return err("No current tab set");
+    }
+
+    const page = Session.instance.stagehandPages[Session.instance.currentTab];
+    const observations = await safeObserve(page);
+    if (observations.isErr()) {
+      return observations;
+    }
+    return ok(observations.value.map((obs) => obs.description));
+  }
   static async interact(
     instructions: string,
   ): Promise<Result<void, BrowserError>> {
-    console.log(`Interacting with ${instructions}`);
-    return ok(undefined);
+    if (!Session.instance.currentTab) {
+      return err("No current tab set");
+    }
+    const page = Session.instance.stagehandPages[Session.instance.currentTab];
+    return safeInteract(page, instructions);
   }
 }

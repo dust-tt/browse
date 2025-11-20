@@ -25,6 +25,7 @@ export type Dump = {
   timestamp: Date;
   options: {
     html: boolean;
+    offset?: number;
   };
 };
 
@@ -36,6 +37,12 @@ export type Go = {
   };
 };
 
+export type Observe = {
+  type: "observe";
+  timestamp: Date;
+  options: undefined;
+};
+
 export type Interact = {
   type: "interact";
   timestamp: Date;
@@ -45,7 +52,7 @@ export type Interact = {
 };
 
 export interface Action {
-  type: (Dump | Go | Interact)["type"];
+  type: (Dump | Go | Observe | Interact)["type"];
   timestamp: Date;
   options: Record<string, any>;
 }
@@ -89,6 +96,7 @@ export const SESSION_METHODS = [
   "closeTab",
   "dump",
   "go",
+  "observe",
   "interact",
   "deleteSession",
 ] as const;

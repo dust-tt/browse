@@ -19,6 +19,7 @@ export class ClientSocket {
     | ((response: Result<unknown, BrowserError>) => void)
     | null = null;
   private result: Result<unknown, BrowserError> | null = null;
+  private buffer: string = "";
   private client: net.Socket;
 
   constructor(public sessionName: string) {
@@ -99,10 +100,10 @@ export class ClientSocket {
         () => {
           if (this.pendingResponse) {
             this.pendingResponse = null;
-            reject(new Error("Request timeout"));
+            reject(err("Request timeout"));
           }
         },
-        method === "deleteSession" ? 100 : 30000,
+        method === "deleteSession" ? 100 : 60000,
       ); // 30 second timeout (only need to wait for a bit for deleteSession)
 
       // Clear timeout when response is received
@@ -127,19 +128,27 @@ export class ClientSocket {
     }
   }
 
-  private setupListeners() {
-    this.client.on("data", (data) => {
-      console.log(`Received data: ${data.toString()}`);
-      if (!this.pendingResponse) {
-        return;
-      }
-      const response = JSON.parse(data.toString());
+  private recieveData(data: Buffer<ArrayBuffer>): void {
+    if (!this.pendingResponse) {
+      return;
+    }
+    this.buffer += data.toString();
+
+    try {
+      const response = JSON.parse(this.buffer);
       if (!isResponse(response)) {
         this.pendingResponse(err(`Invalid response from server: ${response}`));
       }
 
       this.pendingResponse(responseToResult(response));
       this.pendingResponse = null;
-    });
+      this.buffer = "";
+    } catch (_) {
+      // Incomplete JSON, waiting for more data
+    }
+  }
+
+  private setupListeners() {
+    this.client.on("data", (d) => this.recieveData(d));
   }
 }

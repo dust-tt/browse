@@ -44,7 +44,6 @@ export class ServerSocket {
     const result = await Session.call(method, params);
     console.log(`Result:\n${prettyString(result)}`);
     client.write(JSON.stringify(resultToResponse(result)));
-    console.log(`Sent response:\n${prettyString(result)}`);
   }
 
   listen() {
