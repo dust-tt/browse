@@ -20,11 +20,17 @@ export class BrowserController {
       !BrowserController.instance ||
       BrowserController.instance.sessionName !== sessionName
     ) {
-      BrowserController.instance = new BrowserController(sessionName);
-      return await BrowserController.instance.socket.connect();
-    } else {
-      return ok(undefined);
+      const res = await ClientSocket.ensureSession(sessionName);
+      if (res.isErr()) {
+        return res;
+      }
+      try {
+        BrowserController.instance = new BrowserController(sessionName);
+      } catch (e: any) {
+        return err(e);
+      }
     }
+    return ok(undefined);
   }
 
   static end() {
@@ -60,19 +66,6 @@ export class BrowserController {
       return res;
     } else if (typeof res.value !== "number") {
       return err(`Got non-number response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
-    }
-  }
-
-  static async getTab(tabName: string): Promise<Result<Tab, BrowserError>> {
-    const res = await BrowserController.send("getTab", {
-      tabName,
-    });
-    if (res.isErr()) {
-      return res;
-    } else if (!isTab(res.value)) {
-      return err(`Got non-tab response: ${JSON.stringify(res)}`);
     } else {
       return ok(res.value);
     }

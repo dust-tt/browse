@@ -82,7 +82,6 @@ export type SessionMethod = (typeof SESSION_METHODS)[number];
 
 export const SESSION_METHODS = [
   "runtimeSeconds",
-  "getTab",
   "listTabs",
   "getCurrentTab",
   "setCurrentTab",
