@@ -100,7 +100,7 @@ export class ClientSocket {
         () => {
           if (this.pendingResponse) {
             this.pendingResponse = null;
-            reject(err("Request timeout"));
+            reject(new Error("Request timeout"));
           }
         },
         method === "deleteSession" ? 100 : 60000,
