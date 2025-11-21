@@ -31,6 +31,7 @@ export class Err<E> {
 
   toString(): string {
     if (this.error && this.error instanceof BrowserError) {
+      console.log("IS BrowserError");
       return `Error: ${this.error.toString()}`;
     }
     return `Error: ${JSON.stringify(this.error, null, 2)}`;
@@ -55,8 +56,12 @@ export class BrowserError {
   }
 }
 
-export function err(message: string): Err<BrowserError> {
-  return new Err(new BrowserError(message));
+export function err(message: string | Error): Err<BrowserError> {
+  if (message instanceof Error) {
+    return new Err(new BrowserError(message.message));
+  } else {
+    return new Err(new BrowserError(message));
+  }
 }
 
 export function ok<T>(value: T): Ok<T> {

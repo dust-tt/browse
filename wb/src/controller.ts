@@ -4,9 +4,7 @@ import {
   InteractResult,
   isInteractResult,
   isNamedTab,
-  isObserveResult,
   isTab,
-  ObserveResult,
   SessionMethod,
   Tab,
 } from "@browse/common/types";
@@ -169,19 +167,7 @@ export class BrowserController {
       return ok(undefined);
     }
   }
-  static async observe(): Promise<Result<ObserveResult[], BrowserError>> {
-    const res = await BrowserController.send("observe");
-    if (res.isErr()) {
-      return res;
-    } else if (
-      !Array.isArray(res.value) ||
-      res.value.some((v) => !isObserveResult(v))
-    ) {
-      return err(`Got non-array response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
-    }
-  }
+
   static async interact(
     instructions: string,
   ): Promise<Result<InteractResult, BrowserError>> {

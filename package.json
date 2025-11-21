@@ -29,6 +29,7 @@
   },
   "dependencies": {
     "jiti": "^2.6.1",
+    "turndown": "^7.2.2",
     "typescript-eslint": "^8.47.0"
   }
 }
