@@ -11,7 +11,7 @@
     "./constants": "./dist/constants.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "clean": "rm -rf dist"
   },
   "devDependencies": {
