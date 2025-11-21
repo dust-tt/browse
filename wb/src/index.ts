@@ -79,15 +79,6 @@ program
     process.exit(0);
   });
 
-program
-  .command("observe")
-  .description("Observe the current tab")
-  .action(async () => {
-    const res = await BrowserController.observe();
-    console.log(res);
-    process.exit(0);
-  });
-
 const tabCmd = program.command("tab").description("Manage browser tabs");
 
 tabCmd

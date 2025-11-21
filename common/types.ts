@@ -37,12 +37,6 @@ export type Go = {
   };
 };
 
-export type Observe = {
-  type: "observe";
-  timestamp: Date;
-  options: undefined;
-};
-
 export type Interact = {
   type: "interact";
   timestamp: Date;
@@ -51,8 +45,23 @@ export type Interact = {
   };
 };
 
+export type InteractResult = {
+  description: string;
+  url: string;
+};
+
+export function isInteractResult(result: any): result is InteractResult {
+  return (
+    typeof result === "object" &&
+    "description" in result &&
+    typeof result.description === "string" &&
+    "url" in result &&
+    typeof result.url === "string"
+  );
+}
+
 export interface Action {
-  type: (Dump | Go | Observe | Interact)["type"];
+  type: (Dump | Go | Interact)["type"];
   timestamp: Date;
   options: Record<string, any>;
 }
@@ -96,7 +105,6 @@ export const SESSION_METHODS = [
   "closeTab",
   "dump",
   "go",
-  "observe",
   "interact",
   "deleteSession",
 ] as const;

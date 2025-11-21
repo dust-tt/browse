@@ -1,5 +1,6 @@
 import { BrowserError, err, ok, Result } from "@browse/common/error";
-import { ObserveResult, Page, Stagehand } from "@browserbasehq/stagehand";
+import { InteractResult } from "@browse/common/types";
+import { Page, Stagehand } from "@browserbasehq/stagehand";
 
 export async function safeGoto(
   page: Page,
@@ -20,7 +21,7 @@ export async function safeContent(
   page: Page,
 ): Promise<Result<string, BrowserError>> {
   try {
-    const content = await page.content();
+    const content = await page.locator("body").innerHtml();
     return ok(content);
   } catch (e: any) {
     return err(e);
@@ -53,25 +54,16 @@ export async function safeClose(
 
 export async function safeInteract(
   page: Page,
+  stagehand: Stagehand,
   instructions: string,
-): Promise<Result<void, BrowserError>> {
+): Promise<Result<InteractResult, BrowserError>> {
   try {
-    const res = await page.act(instructions);
+    const res = await stagehand.act(instructions, { page });
+
     if (!res.success) {
       return err(`Failed to interact with ${instructions}`);
     }
-  } catch (e: any) {
-    return err(e);
-  }
-  return ok(undefined);
-}
-
-export async function safeObserve(
-  page: Page,
-): Promise<Result<ObserveResult[], BrowserError>> {
-  try {
-    const results = await page.observe();
-    return ok(results);
+    return ok({ description: res.actionDescription, url: page.url() });
   } catch (e: any) {
     return err(e);
   }
