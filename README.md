@@ -78,8 +78,7 @@ npm run uninstall:bins
 Usage: wb [options] [command]
 
 Options:
-  -s, --session [name]     Name of the session to use: default is 'default'
-                           (default: "default")
+  -s, --session [name]     Name of the session to use: default is 'default' (default: "default")
   -h, --help               display help for command
 
 Commands:
@@ -89,7 +88,6 @@ Commands:
   dump [options]           Dump the current tab (max 8196 characters)
   go <url>                 Go to a URL
   interact <instructions>  Interact with the current tab
-  observe                  Observe the current tab
   tab                      Manage browser tabs
   help [command]           display help for command
 ```
