@@ -1,9 +1,4 @@
-import {
-  InteractResult,
-  isSessionMethod,
-  ObserveResult,
-  Tab,
-} from "@browse/common/types";
+import { InteractResult, isSessionMethod, Tab } from "@browse/common/types";
 import { BrowserError, err, ok, Result } from "@browse/common/error";
 import {
   isDumpInput,
@@ -13,21 +8,18 @@ import {
   isTabInput,
 } from "./types";
 import { ServerSocket } from "./socket";
-import { Stagehand } from "@browserbasehq/stagehand";
-import { Page } from "playwright-core";
-import Firecrawl from "firecrawl";
+import { Page, Stagehand } from "@browserbasehq/stagehand";
 import {
   safeClose,
   safeContent,
-  safeContext,
   safeGoto,
   safeInteract,
   safeNewPage,
-  safeObserve,
 } from "./utils";
 import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
 import path from "path";
+import { convert } from "html-to-markdown-node";
 
 export class Session {
   private static instance: Session;
@@ -38,7 +30,6 @@ export class Session {
   public currentTab?: string;
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
-  private firecrawl: Firecrawl;
 
   private constructor(public sessionName: string = "default") {
     this.startTime = new Date();
@@ -52,7 +43,6 @@ export class Session {
         userDataDir: dataDir,
       },
     });
-    this.firecrawl = new Firecrawl({ apiKey: process.env.FIRECRAWL_API_KEY });
   }
 
   static async call(
@@ -101,8 +91,6 @@ export class Session {
         } else {
           return err("Invalid parameters");
         }
-      case "observe":
-        return await Session.observe();
       case "interact":
         if (isInteractInput(params)) {
           return Session.interact(params.instructions);
@@ -178,12 +166,8 @@ export class Session {
         actions: [],
         startTime: new Date(),
       };
-      const ctxRes = await safeContext(Session.instance.stagehand);
-      if (ctxRes.isErr()) {
-        return ctxRes;
-      }
 
-      const pageRes = await safeNewPage(ctxRes.value, url);
+      const pageRes = await safeNewPage(Session.instance.stagehand, url);
       if (pageRes.isErr()) {
         return pageRes;
       }
@@ -222,27 +206,12 @@ export class Session {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
-    let text: string;
-    if (html) {
-      const page = Session.instance.pages[Session.instance.currentTab];
-      const res = await safeContent(page);
-      if (res.isErr()) {
-        return res;
-      }
-      text = res.value;
-    } else {
-      const url = Session.instance.tabs[Session.instance.currentTab].url;
-      try {
-        const scrapeResponse = await Session.instance.firecrawl.scrape(url, {
-          // By default cache-expiry is already set to 2 days.
-          formats: ["markdown"],
-        });
-        text = scrapeResponse.markdown ?? "";
-      } catch (e: any) {
-        return err(e);
-      }
+    const page = Session.instance.pages[Session.instance.currentTab];
+    const res = await safeContent(page);
+    if (res.isErr()) {
+      return res;
     }
-
+    const text = html ? res.value : convert(res.value);
     return ok(text.slice(offset, 8196 + offset));
   }
 
@@ -261,14 +230,6 @@ export class Session {
     return ok(undefined);
   }
 
-  static async observe(): Promise<Result<ObserveResult[], BrowserError>> {
-    if (!Session.instance.currentTab) {
-      return err("No current tab set");
-    }
-
-    const page = Session.instance.pages[Session.instance.currentTab];
-    return await safeObserve(page);
-  }
   static async interact(
     instructions: string,
   ): Promise<Result<InteractResult, BrowserError>> {

@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@browse/common": "^1.0.0",
-    "@trpc/client": "^10.45.2",
     "commander": "^11.1.0"
   },
   "devDependencies": {

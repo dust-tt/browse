@@ -14,9 +14,7 @@
   "dependencies": {
     "@browse/common": "^1.0.0",
     "@browserbasehq/stagehand": "^3.0.3",
-    "@trpc/server": "^10.45.0",
-    "firecrawl": "^4.6.1",
-    "playwright-core": "^1.56.1",
+    "html-to-markdown-node": "^2.9.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
