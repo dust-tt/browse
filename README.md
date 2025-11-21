@@ -10,16 +10,12 @@ Browse is a monorepo project that provides automated web browsing capabilities t
 - **`wbd`** (Daemon): Server daemon that performs web automation using Stagehand and Browserbase
 - **`common`**: Shared TypeScript code and types used by both components
 
-The architecture uses tRPC for type-safe communication between the CLI and daemon, ensuring robust and maintainable code.
-
 ## Prerequisites
 
 - Node.js 20.x or higher
 - npm or yarn package manager
 
 ## Installation
-
-Install all dependencies across the monorepo:
 
 ```bash
 npm install
@@ -39,8 +35,6 @@ npm run build:cli
 # Build daemon only
 npm run build:daemon
 ```
-
-The build process compiles TypeScript to JavaScript in the `dist` directories of each workspace.
 
 ## Development
 
@@ -115,10 +109,3 @@ Commands:
   set-current <name>  Set the current tab
   help [command]      display help for command
 ```
-
-
-## Technologies
-
-- **TypeScript**: Type-safe JavaScript
-- **Stagehand**: Web automation framework
-- **Commander.js**: CLI framework
