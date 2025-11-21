@@ -1,6 +1,15 @@
 import { BrowserError, err, ok, Result } from "@browse/common/error";
 import { ClientSocket } from "./socket";
-import { isNamedTab, isTab, SessionMethod, Tab } from "@browse/common/types";
+import {
+  InteractResult,
+  isInteractResult,
+  isNamedTab,
+  isObserveResult,
+  isTab,
+  ObserveResult,
+  SessionMethod,
+  Tab,
+} from "@browse/common/types";
 import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
 import path from "path";
@@ -160,13 +169,13 @@ export class BrowserController {
       return ok(undefined);
     }
   }
-  static async observe(): Promise<Result<string[], BrowserError>> {
+  static async observe(): Promise<Result<ObserveResult[], BrowserError>> {
     const res = await BrowserController.send("observe");
     if (res.isErr()) {
       return res;
     } else if (
       !Array.isArray(res.value) ||
-      res.value.some((v) => typeof v !== "string")
+      res.value.some((v) => !isObserveResult(v))
     ) {
       return err(`Got non-array response: ${JSON.stringify(res)}`);
     } else {
@@ -175,14 +184,16 @@ export class BrowserController {
   }
   static async interact(
     instructions: string,
-  ): Promise<Result<void, BrowserError>> {
+  ): Promise<Result<InteractResult, BrowserError>> {
     const res = await BrowserController.send("interact", {
       instructions,
     });
     if (res.isErr()) {
       return res;
+    } else if (!isInteractResult(res.value)) {
+      return err(`Got non-interact response: ${JSON.stringify(res)}`);
     } else {
-      return ok(undefined);
+      return ok(res.value);
     }
   }
 }

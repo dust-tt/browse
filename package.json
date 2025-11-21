@@ -18,17 +18,16 @@
     "clean": "rm -rf common/dist wb/dist wbd/dist node_modules common/node_modules wb/node_modules wbd/node_modules"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^20.19.25",
     "eslint-config-prettier": "^10.1.8",
     "module-alias": "^2.2.3",
     "prettier": "^3.6.2",
     "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "firecrawl": "^1.21.1",
     "jiti": "^2.6.1",
     "typescript-eslint": "^8.47.0"
   }

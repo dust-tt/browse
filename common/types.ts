@@ -51,6 +51,38 @@ export type Interact = {
   };
 };
 
+export type ObserveResult = {
+  selector: string;
+  content: string;
+  label?: string;
+};
+
+export type InteractResult = {
+  description: string;
+  url: string;
+};
+
+export function isObserveResult(result: any): result is ObserveResult {
+  return (
+    typeof result === "object" &&
+    "selector" in result &&
+    typeof result.selector === "string" &&
+    "content" in result &&
+    typeof result.content === "string" &&
+    ("label" in result ? typeof result.label === "string" : true)
+  );
+}
+
+export function isInteractResult(result: any): result is InteractResult {
+  return (
+    typeof result === "object" &&
+    "description" in result &&
+    typeof result.description === "string" &&
+    "url" in result &&
+    typeof result.url === "string"
+  );
+}
+
 export interface Action {
   type: (Dump | Go | Observe | Interact)["type"];
   timestamp: Date;

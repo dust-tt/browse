@@ -12,13 +12,13 @@
     "wb": "./dist/index.js"
   },
   "dependencies": {
-    "@browse/common": "*",
-    "@trpc/client": "^10.45.0",
+    "@browse/common": "^1.0.0",
+    "@trpc/client": "^10.45.2",
     "commander": "^11.1.0"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.3"
+    "@types/node": "^20.19.25",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
   }
 }

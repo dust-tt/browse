@@ -1,4 +1,9 @@
-import { isSessionMethod, Tab } from "@browse/common/types";
+import {
+  InteractResult,
+  isSessionMethod,
+  ObserveResult,
+  Tab,
+} from "@browse/common/types";
 import { BrowserError, err, ok, Result } from "@browse/common/error";
 import {
   isDumpInput,
@@ -8,16 +13,18 @@ import {
   isTabInput,
 } from "./types";
 import { ServerSocket } from "./socket";
-import { Page, Stagehand } from "@browserbasehq/stagehand";
+import { Stagehand } from "@browserbasehq/stagehand";
+import { Page } from "playwright-core";
 import Firecrawl from "firecrawl";
 import {
   safeClose,
   safeContent,
+  safeContext,
   safeGoto,
   safeInteract,
   safeNewPage,
   safeObserve,
-} from "./stagehand_utils";
+} from "./utils";
 import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
 import path from "path";
@@ -27,14 +34,11 @@ export class Session {
   private socket: ServerSocket;
   private startTime: Date;
   private tabs: Record<string, Tab> = {};
-  private stagehandPages: Record<string, Page> = {};
+  private pages: Record<string, Page> = {};
   public currentTab?: string;
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
   private firecrawl: Firecrawl;
-  private get ctx() {
-    return Session.instance.stagehand.context;
-  }
 
   private constructor(public sessionName: string = "default") {
     this.startTime = new Date();
@@ -174,11 +178,16 @@ export class Session {
         actions: [],
         startTime: new Date(),
       };
-      const pageRes = await safeNewPage(Session.instance.stagehand, url);
+      const ctxRes = await safeContext(Session.instance.stagehand);
+      if (ctxRes.isErr()) {
+        return ctxRes;
+      }
+
+      const pageRes = await safeNewPage(ctxRes.value, url);
       if (pageRes.isErr()) {
         return pageRes;
       }
-      Session.instance.stagehandPages[tabName] = pageRes.value;
+      Session.instance.pages[tabName] = pageRes.value;
 
       if (Object.keys(Session.instance.tabs).length === 0) {
         Session.instance.currentTab = tabName;
@@ -192,11 +201,11 @@ export class Session {
   static async closeTab(tabName: string): Promise<Result<void, BrowserError>> {
     if (Session.hasTab(tabName)) {
       delete Session.instance.tabs[tabName];
-      const res = await safeClose(Session.instance.stagehandPages[tabName]);
+      const res = await safeClose(Session.instance.pages[tabName]);
       if (res.isErr()) {
         return res;
       }
-      delete Session.instance.stagehandPages[tabName];
+      delete Session.instance.pages[tabName];
       if (Session.instance.currentTab === tabName) {
         Session.instance.currentTab = undefined;
       }
@@ -215,7 +224,7 @@ export class Session {
     }
     let text: string;
     if (html) {
-      const page = Session.instance.stagehandPages[Session.instance.currentTab];
+      const page = Session.instance.pages[Session.instance.currentTab];
       const res = await safeContent(page);
       if (res.isErr()) {
         return res;
@@ -223,15 +232,14 @@ export class Session {
       text = res.value;
     } else {
       const url = Session.instance.tabs[Session.instance.currentTab].url;
-      const scrapeResponse = await Session.instance.firecrawl.scrapeUrl(url, {
-        // By default cache-expiry is already set to 2 days.
-        formats: ["markdown"],
-      });
-
-      if (scrapeResponse.success) {
+      try {
+        const scrapeResponse = await Session.instance.firecrawl.scrape(url, {
+          // By default cache-expiry is already set to 2 days.
+          formats: ["markdown"],
+        });
         text = scrapeResponse.markdown ?? "";
-      } else {
-        return err(scrapeResponse.error);
+      } catch (e: any) {
+        return err(e);
       }
     }
 
@@ -243,35 +251,31 @@ export class Session {
       return err("No current tab set");
     }
 
-    let page = Session.instance.stagehandPages[Session.instance.currentTab];
+    let page = Session.instance.pages[Session.instance.currentTab];
     const pageRes = await safeGoto(page, url);
     if (pageRes.isErr()) {
       return pageRes;
     }
     page = pageRes.value;
-    Session.instance.stagehandPages[Session.instance.currentTab] = page;
+    Session.instance.pages[Session.instance.currentTab] = page;
     return ok(undefined);
   }
 
-  static async observe(): Promise<Result<string[], BrowserError>> {
+  static async observe(): Promise<Result<ObserveResult[], BrowserError>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
 
-    const page = Session.instance.stagehandPages[Session.instance.currentTab];
-    const observations = await safeObserve(page);
-    if (observations.isErr()) {
-      return observations;
-    }
-    return ok(observations.value.map((obs) => obs.description));
+    const page = Session.instance.pages[Session.instance.currentTab];
+    return await safeObserve(page);
   }
   static async interact(
     instructions: string,
-  ): Promise<Result<void, BrowserError>> {
+  ): Promise<Result<InteractResult, BrowserError>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
-    const page = Session.instance.stagehandPages[Session.instance.currentTab];
-    return safeInteract(page, instructions);
+    const page = Session.instance.pages[Session.instance.currentTab];
+    return await safeInteract(page, Session.instance.stagehand, instructions);
   }
 }

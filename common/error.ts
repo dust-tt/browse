@@ -30,7 +30,10 @@ export class Err<E> {
   }
 
   toString(): string {
-    return `Error: ${String(this.error)}`;
+    if (this.error && this.error instanceof BrowserError) {
+      return `Error: ${this.error.toString()}`;
+    }
+    return `Error: ${JSON.stringify(this.error, null, 2)}`;
   }
 
   [Symbol.for("nodejs.util.inspect.custom")](): string {
