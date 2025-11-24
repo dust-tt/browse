@@ -17,20 +17,13 @@ program
   )
   .hook("preAction", async (thisCommand) => {
     const options = thisCommand.opts();
-<<<<<<< HEAD
-    BrowserController.initialize(options.session, options.debug);
-    const res = await ClientSocket.ensureSession(options.session);
-=======
-    try {
-      const res = await BrowserController.initialize(options.session);
->>>>>>> 2a54ae6 (durable)
+    const res = await BrowserController.initialize(
+      options.session,
+      options.debug,
+    );
     if (res.isErr()) {
       console.error(res.error);
       process.exit(1);
-    }
-    } catch (e: any) {
-      console.error("Failed to initialize");
-      console.error(e);
     }
   });
 
