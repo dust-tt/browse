@@ -22,22 +22,64 @@ export class ClientSocket {
   private buffer: string = "";
   private client: net.Socket;
 
+  static async connect(
+    sessionName: string,
+  ): Promise<Result<ClientSocket, BrowserError>> {
+    return new Promise<Result<ClientSocket, BrowserError>>((resolve) => {
+      // Even if the net.createConnection is synchronous, it will only connect asynchronously so we
+      // need to to wait for the connection to be established
+      const socket = new ClientSocket(sessionName);
+
+      // Wait for either 'connect' or 'error' event
+      const onConnect = () => {
+        socket.client.removeListener("error", onError);
+        resolve(ok(socket));
+      };
+
+      const onError = (e: Error) => {
+        socket.client.removeListener("connect", onConnect);
+        resolve(err(e.message));
+      };
+
+      socket.client.once("connect", onConnect);
+      socket.client.once("error", onError);
+    });
+  }
+
   constructor(public sessionName: string) {
-    try {
-      this.client = net.createConnection(socketPath(sessionName));
-      this.setupListeners();
-    } catch (e: any) {
-      throw new Error(`Failed to connect to UNIX socket: ${e}`);
-    }
+    this.client = net.createConnection(socketPath(sessionName));
+
+    // Add error handler immediately to prevent unhandled 'error' events
+    this.client.on("error", (e) => {
+      // If we have a pending response, resolve it with the error
+      if (this.pendingResponse) {
+        this.pendingResponse(err(e.message));
+        this.pendingResponse = null;
+      }
+      // Otherwise, the error will be caught during connection attempt
+    });
+
+    this.setupListeners();
   }
 
   static async ensureSession(
     sessionName: string,
     debug: boolean = false,
   ): Promise<Result<void, BrowserError>> {
-    return !fs.existsSync(socketPath(sessionName))
-      ? await ClientSocket.createSession(sessionName, debug)
-      : ok(undefined);
+    if (!fs.existsSync(socketPath(sessionName))) {
+      return ClientSocket.createSession(sessionName, debug);
+    } else {
+      // Try to connect
+      const res = await ClientSocket.connect(sessionName);
+      if (res.isOk()) {
+        res.value.end(); // Close the test connection
+        return ok(undefined);
+      } else {
+        // Erase stale socket file
+        fs.unlinkSync(socketPath(sessionName));
+        return ClientSocket.createSession(sessionName, debug);
+      }
+    }
   }
 
   static async createSession(
@@ -153,5 +195,13 @@ export class ClientSocket {
 
   private setupListeners() {
     this.client.on("data", (d) => this.recieveData(d));
+
+    this.client.on("close", () => {
+      // Handle socket close gracefully
+      if (this.pendingResponse) {
+        this.pendingResponse(err("Connection closed"));
+        this.pendingResponse = null;
+      }
+    });
   }
 }
