@@ -44,6 +44,12 @@ export class Session {
       localBrowserLaunchOptions: {
         headless: !debug,
         userDataDir: dataDir,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+        ],
       },
     });
   }
