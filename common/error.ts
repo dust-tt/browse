@@ -87,6 +87,10 @@ function prettyStringInternal(value: any, indent: number = 0): string {
   if (isBasicType(value)) {
     if (typeof value === "string") {
       return prefix + value;
+    } else if ((indent === 0 && value === null) || value === undefined) {
+      // If we're only outputting an empty value and we're not part of a larger object, don't print
+      // anything
+      return "";
     } else {
       return prefix + JSON.stringify(value);
     }
