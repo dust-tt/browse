@@ -31,7 +31,10 @@ export class Session {
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
 
-  private constructor(public sessionName: string = "default") {
+  private constructor(
+    public sessionName: string = "default",
+    debug: boolean = false,
+  ) {
     this.startTime = new Date();
     this.socket = new ServerSocket(sessionName);
     const dataDir = path.join(SESSION_DIR, sessionName, "data");
@@ -39,7 +42,7 @@ export class Session {
     this.stagehand = new Stagehand({
       env: "LOCAL",
       localBrowserLaunchOptions: {
-        headless: false,
+        headless: !debug,
         userDataDir: dataDir,
       },
     });
@@ -109,9 +112,12 @@ export class Session {
     );
   }
 
-  static async initialize(sessionName: string = "default") {
+  static async initialize(
+    sessionName: string = "default",
+    debug: boolean = false,
+  ) {
     if (!Session.instance || Session.instance.sessionName !== sessionName) {
-      Session.instance = new Session(sessionName);
+      Session.instance = new Session(sessionName, debug);
       await Session.instance.stagehand.init();
       Session.instance.socket.listen();
     }
