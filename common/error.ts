@@ -31,7 +31,6 @@ export class Err<E> {
 
   toString(): string {
     if (this.error && this.error instanceof BrowserError) {
-      console.log("IS BrowserError");
       return `Error: ${this.error.toString()}`;
     }
     return `Error: ${JSON.stringify(this.error, null, 2)}`;

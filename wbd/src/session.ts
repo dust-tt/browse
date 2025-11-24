@@ -217,6 +217,14 @@ export class Session {
     if (res.isErr()) {
       return res;
     }
+    Session.instance.tabs[Session.instance.currentTab].actions.push({
+      type: "dump",
+      timestamp: new Date(),
+      options: {
+        html,
+        offset,
+      },
+    });
     const text = html ? res.value : convert(res.value);
     return ok(text.slice(offset, 8196 + offset));
   }
@@ -233,6 +241,15 @@ export class Session {
     }
     page = pageRes.value;
     Session.instance.pages[Session.instance.currentTab] = page;
+    // we use the page url as there may have been a redirection
+    Session.instance.tabs[Session.instance.currentTab].url = page.url();
+    Session.instance.tabs[Session.instance.currentTab].actions.push({
+      type: "go",
+      timestamp: new Date(),
+      options: {
+        url,
+      },
+    });
     return ok(undefined);
   }
 
@@ -243,6 +260,19 @@ export class Session {
       return err("No current tab set");
     }
     const page = Session.instance.pages[Session.instance.currentTab];
-    return await safeInteract(page, Session.instance.stagehand, instructions);
+    const res = await safeInteract(page, Session.instance.stagehand, instructions);
+    if (res.isErr()) {
+      return res;
+    }
+    Session.instance.tabs[Session.instance.currentTab].actions.push({
+      type: "interact",
+      timestamp: new Date(),
+      options: {
+        instructions,
+      },
+    });
+    // The interaction may have changed the page url (e.g. clicking a link)
+    Session.instance.tabs[Session.instance.currentTab].url = page.url();
+    return ok(res.value);
   }
 }
