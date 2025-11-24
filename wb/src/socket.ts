@@ -107,7 +107,8 @@ export class ClientSocket {
     } while (!fs.existsSync(socketPath(sessionName)) && elapsed < maxWaitTime);
 
     if (!fs.existsSync(socketPath(sessionName))) {
-      return err(`Session ${sessionName} failed to start`);
+      const error = child.stderr?.read()?.toString() ?? "unknown error";
+      return err(`Session ${sessionName} failed to start: ${error}`);
     }
     return ok(undefined);
   }
