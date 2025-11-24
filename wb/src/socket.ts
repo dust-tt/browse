@@ -33,17 +33,20 @@ export class ClientSocket {
 
   static async ensureSession(
     sessionName: string,
+    debug: boolean = false,
   ): Promise<Result<void, BrowserError>> {
     return !fs.existsSync(socketPath(sessionName))
-      ? await ClientSocket.createSession(sessionName)
+      ? await ClientSocket.createSession(sessionName, debug)
       : ok(undefined);
   }
 
   static async createSession(
     sessionName: string,
+    debug: boolean = false,
   ): Promise<Result<void, BrowserError>> {
     // Spawn the browser process in detached mode to orphan it
-    const child = spawn("wbd", ["-s", sessionName], {
+    const options = (debug ? ["-d"] : []).concat(["-s", sessionName]);
+    const child = spawn("wbd", options, {
       detached: true,
       stdio: "ignore",
     });

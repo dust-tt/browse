@@ -11,9 +11,14 @@ program
     "Name of the session to use: default is 'default'",
     "default",
   )
+  .option(
+    "-d, --debug",
+    "Enable debug mode (makes the browser not headless)",
+    false,
+  )
   .hook("preAction", async (thisCommand) => {
     const options = thisCommand.opts();
-    BrowserController.initialize(options.session);
+    BrowserController.initialize(options.session, options.debug);
     const res = await ClientSocket.ensureSession(options.session);
     if (res.isErr()) {
       console.error(res.error);

@@ -25,12 +25,13 @@ export class BrowserController {
 
   static async initialize(
     sessionName: string = "default",
+    debug: boolean = false,
   ): Promise<Result<void, BrowserError>> {
     if (
       !BrowserController.instance ||
       BrowserController.instance.sessionName !== sessionName
     ) {
-      const res = await ClientSocket.ensureSession(sessionName);
+      const res = await ClientSocket.ensureSession(sessionName, debug);
       if (res.isErr()) {
         return res;
       }
