@@ -117,8 +117,8 @@ export class ClientSocket {
   }
 
   async deleteSession() {
-    await this.send("deleteSession");
     if (fs.existsSync(socketPath(this.sessionName))) {
+      await this.send("deleteSession");
       fs.unlinkSync(socketPath(this.sessionName));
     }
   }
