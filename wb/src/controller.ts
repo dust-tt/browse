@@ -56,6 +56,12 @@ export class BrowserController {
 
   static async deleteSession() {
     await BrowserController.socket.deleteSession();
+    // Delete all session data & socket file
+    const sessionPath = path.join(
+      SESSION_DIR,
+      BrowserController.instance.sessionName,
+    );
+    fs.rmdirSync(sessionPath, { recursive: true });
   }
 
   static async send(
