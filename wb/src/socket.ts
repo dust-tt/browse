@@ -1,6 +1,6 @@
 import net from "net";
 import fs from "fs";
-import { BrowserError, err, ok, Result } from "@browse/common/error";
+import { err, ok, Result } from "@browse/common/error";
 import { SESSION_DIR } from "@browse/common/constants";
 import path from "path";
 import { spawn } from "child_process";
@@ -15,17 +15,13 @@ function socketPath(sessionName: string): string {
 }
 
 export class ClientSocket {
-  private pendingResponse:
-    | ((response: Result<unknown, BrowserError>) => void)
-    | null = null;
-  private result: Result<unknown, BrowserError> | null = null;
+  private pendingResponse: ((response: Result<unknown>) => void) | null = null;
+  private result: Result<unknown> | null = null;
   private buffer: string = "";
   private client: net.Socket;
 
-  static async connect(
-    sessionName: string,
-  ): Promise<Result<ClientSocket, BrowserError>> {
-    return new Promise<Result<ClientSocket, BrowserError>>((resolve) => {
+  static async connect(sessionName: string): Promise<Result<ClientSocket>> {
+    return new Promise<Result<ClientSocket>>((resolve) => {
       // Even if the net.createConnection is synchronous, it will only connect asynchronously so we
       // need to to wait for the connection to be established
       const socket = new ClientSocket(sessionName);
@@ -65,7 +61,7 @@ export class ClientSocket {
   static async ensureSession(
     sessionName: string,
     debug: boolean = false,
-  ): Promise<Result<void, BrowserError>> {
+  ): Promise<Result<void>> {
     if (!fs.existsSync(socketPath(sessionName))) {
       return ClientSocket.createSession(sessionName, debug);
     } else {
@@ -85,7 +81,7 @@ export class ClientSocket {
   static async createSession(
     sessionName: string,
     debug: boolean = false,
-  ): Promise<Result<void, BrowserError>> {
+  ): Promise<Result<void>> {
     // Spawn the browser process in detached mode to orphan it
     const options = (debug ? ["-d"] : []).concat(["-s", sessionName]);
     const child = spawn("wbd", options, {
@@ -124,10 +120,7 @@ export class ClientSocket {
     }
   }
 
-  async send(
-    method: SessionMethod,
-    params?: any,
-  ): Promise<Result<unknown, BrowserError>> {
+  async send(method: SessionMethod, params?: any): Promise<Result<unknown>> {
     const response = new Promise((resolve, reject) => {
       this.pendingResponse = resolve;
 
@@ -154,7 +147,7 @@ export class ClientSocket {
 
       // Clear timeout when response is received
       const originalResolve = resolve;
-      this.pendingResponse = (response: Result<unknown, BrowserError>) => {
+      this.pendingResponse = (response: Result<unknown>) => {
         clearTimeout(timeout);
         this.result = response;
         originalResolve(response);

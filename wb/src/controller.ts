@@ -1,4 +1,4 @@
-import { BrowserError, err, ok, Result } from "@browse/common/error";
+import { err, ok, Result } from "@browse/common/error";
 import { ClientSocket } from "./socket";
 import {
   InteractResult,
@@ -26,7 +26,7 @@ export class BrowserController {
   static async initialize(
     sessionName: string = "default",
     debug: boolean = false,
-  ): Promise<Result<void, BrowserError>> {
+  ): Promise<Result<void>> {
     if (
       !BrowserController.instance ||
       BrowserController.instance.sessionName !== sessionName
@@ -67,13 +67,13 @@ export class BrowserController {
   static async send(
     method: SessionMethod,
     params?: unknown,
-  ): Promise<Result<unknown, BrowserError>> {
+  ): Promise<Result<unknown>> {
     const res = await BrowserController.instance.socket.send(method, params);
     BrowserController.socket.end();
     return res;
   }
 
-  static async runtimeSeconds(): Promise<Result<number, BrowserError>> {
+  static async runtimeSeconds(): Promise<Result<number>> {
     const res = await BrowserController.send("runtimeSeconds");
     if (res.isErr()) {
       return res;
@@ -84,7 +84,7 @@ export class BrowserController {
     }
   }
 
-  static async listTabs(): Promise<Result<string[], BrowserError>> {
+  static async listTabs(): Promise<Result<string[]>> {
     const res = await BrowserController.send("listTabs");
     if (res.isErr()) {
       return res;
@@ -98,9 +98,7 @@ export class BrowserController {
     }
   }
 
-  static async getCurrentTab(): Promise<
-    Result<Tab & { tabName: string }, BrowserError>
-  > {
+  static async getCurrentTab(): Promise<Result<Tab & { tabName: string }>> {
     const res = await BrowserController.send("getCurrentTab");
     if (res.isErr()) {
       return res;
@@ -111,9 +109,7 @@ export class BrowserController {
     return ok(res.value);
   }
 
-  static async setCurrentTab(
-    tabName: string,
-  ): Promise<Result<void, BrowserError>> {
+  static async setCurrentTab(tabName: string): Promise<Result<void>> {
     const res = await BrowserController.send("setCurrentTab", {
       tabName,
     });
@@ -124,10 +120,7 @@ export class BrowserController {
     }
   }
 
-  static async newTab(
-    tabName: string,
-    url: string,
-  ): Promise<Result<Tab, BrowserError>> {
+  static async newTab(tabName: string, url: string): Promise<Result<Tab>> {
     const res = await BrowserController.send("newTab", {
       tabName,
       url,
@@ -141,7 +134,7 @@ export class BrowserController {
     }
   }
 
-  static async closeTab(tabName: string): Promise<Result<void, BrowserError>> {
+  static async closeTab(tabName: string): Promise<Result<void>> {
     const res = await BrowserController.send("closeTab", {
       tabName,
     });
@@ -155,7 +148,7 @@ export class BrowserController {
   static async dump(
     html: boolean = false,
     offset: number = 0,
-  ): Promise<Result<string, BrowserError>> {
+  ): Promise<Result<string>> {
     const res = await BrowserController.send("dump", { html, offset });
     if (res.isErr()) {
       return res;
@@ -166,7 +159,7 @@ export class BrowserController {
     }
   }
 
-  static async go(url: string): Promise<Result<void, BrowserError>> {
+  static async go(url: string): Promise<Result<void>> {
     const res = await BrowserController.send("go", { url });
     if (res.isErr()) {
       return res;
@@ -175,9 +168,7 @@ export class BrowserController {
     }
   }
 
-  static async interact(
-    instructions: string,
-  ): Promise<Result<InteractResult, BrowserError>> {
+  static async interact(instructions: string): Promise<Result<InteractResult>> {
     const res = await BrowserController.send("interact", {
       instructions,
     });

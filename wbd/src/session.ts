@@ -1,5 +1,5 @@
 import { InteractResult, isSessionMethod, Tab } from "@browse/common/types";
-import { BrowserError, err, ok, Result } from "@browse/common/error";
+import { err, ok, Result } from "@browse/common/error";
 import {
   isDumpInput,
   isGoInput,
@@ -44,13 +44,11 @@ export class Session {
       localBrowserLaunchOptions: {
         headless: !debug,
         userDataDir: dataDir,
-        ignoreDefaultArgs: true,
         args: [
           "--no-sandbox",
           "--disable-setuid-sandbox",
           "--disable-dev-shm-usage",
           "--disable-gpu",
-          "--disable-cookie-encryption",
         ],
       },
     });
@@ -59,7 +57,7 @@ export class Session {
   static async call(
     method: unknown,
     params: unknown,
-  ): Promise<Result<unknown, BrowserError>> {
+  ): Promise<Result<unknown>> {
     if (!isSessionMethod(method)) {
       return err(`Invalid method ${String(method)}`);
     }
@@ -114,7 +112,7 @@ export class Session {
     }
   }
 
-  static runtimeSeconds(): Result<number, BrowserError> {
+  static runtimeSeconds(): Result<number> {
     return ok(
       (new Date().getTime() - Session.instance.startTime.getTime()) / 1000,
     );
@@ -139,17 +137,17 @@ export class Session {
     return tabName in Session.instance.tabs;
   }
 
-  static getTab(tabName: string): Result<Tab, BrowserError> {
+  static getTab(tabName: string): Result<Tab> {
     return Session.hasTab(tabName)
       ? ok(Session.instance.tabs[tabName])
       : err(`Tab ${tabName} does not exist`);
   }
 
-  static listTabs(): Result<string[], BrowserError> {
+  static listTabs(): Result<string[]> {
     return ok(Object.keys(Session.instance.tabs));
   }
 
-  static getCurrentTab(): Result<{ tabName: string } & Tab, BrowserError> {
+  static getCurrentTab(): Result<{ tabName: string } & Tab> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
@@ -159,7 +157,7 @@ export class Session {
       : ok({ tabName: Session.instance.currentTab, ...tab.value });
   }
 
-  static setCurrentTab(tabName: string): Result<void, BrowserError> {
+  static setCurrentTab(tabName: string): Result<void> {
     if (Session.hasTab(tabName)) {
       Session.instance.currentTab = tabName;
       return ok(undefined);
@@ -168,10 +166,7 @@ export class Session {
     }
   }
 
-  static async newTab(
-    tabName: string,
-    url: string,
-  ): Promise<Result<Tab, BrowserError>> {
+  static async newTab(tabName: string, url: string): Promise<Result<Tab>> {
     if (Session.hasTab(tabName)) {
       return err(`Tab ${tabName} already exists`);
     } else {
@@ -196,7 +191,7 @@ export class Session {
     }
   }
 
-  static async closeTab(tabName: string): Promise<Result<void, BrowserError>> {
+  static async closeTab(tabName: string): Promise<Result<void>> {
     if (Session.hasTab(tabName)) {
       delete Session.instance.tabs[tabName];
       const res = await safeClose(Session.instance.pages[tabName]);
@@ -216,7 +211,7 @@ export class Session {
   static async dump(
     html: boolean,
     offset: number = 0,
-  ): Promise<Result<string, BrowserError>> {
+  ): Promise<Result<string>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
@@ -237,7 +232,7 @@ export class Session {
     return ok(text.slice(offset, 8196 + offset));
   }
 
-  static async go(url: string): Promise<Result<void, BrowserError>> {
+  static async go(url: string): Promise<Result<void>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
@@ -261,9 +256,7 @@ export class Session {
     return ok(undefined);
   }
 
-  static async interact(
-    instructions: string,
-  ): Promise<Result<InteractResult, BrowserError>> {
+  static async interact(instructions: string): Promise<Result<InteractResult>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }

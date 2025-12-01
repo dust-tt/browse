@@ -1,11 +1,8 @@
-import { BrowserError, err, ok, Result } from "@browse/common/error";
+import { err, ok, Result } from "@browse/common/error";
 import { InteractResult } from "@browse/common/types";
 import { Page, Stagehand } from "@browserbasehq/stagehand";
 
-export async function safeGoto(
-  page: Page,
-  url: string,
-): Promise<Result<Page, BrowserError>> {
+export async function safeGoto(page: Page, url: string): Promise<Result<Page>> {
   try {
     const res = await page.goto(url);
     if (!res || !res.ok()) {
@@ -17,9 +14,7 @@ export async function safeGoto(
   return ok(page);
 }
 
-export async function safeContent(
-  page: Page,
-): Promise<Result<string, BrowserError>> {
+export async function safeContent(page: Page): Promise<Result<string>> {
   try {
     const content = await page.locator("body").innerHtml();
     return ok(content);
@@ -31,7 +26,7 @@ export async function safeContent(
 export async function safeNewPage(
   stagehand: Stagehand,
   url: string,
-): Promise<Result<Page, BrowserError>> {
+): Promise<Result<Page>> {
   try {
     const page = await stagehand.context.newPage();
     const res = await safeGoto(page, url);
@@ -41,9 +36,7 @@ export async function safeNewPage(
   }
 }
 
-export async function safeClose(
-  page: Page,
-): Promise<Result<void, BrowserError>> {
+export async function safeClose(page: Page): Promise<Result<void>> {
   try {
     await page.close();
   } catch (e: any) {
@@ -56,7 +49,7 @@ export async function safeInteract(
   page: Page,
   stagehand: Stagehand,
   instructions: string,
-): Promise<Result<InteractResult, BrowserError>> {
+): Promise<Result<InteractResult>> {
   try {
     const res = await stagehand.act(instructions, { page });
 
