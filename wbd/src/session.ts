@@ -1,6 +1,7 @@
 import { InteractResult, isSessionMethod, Tab } from "@browse/common/types";
 import { err, ok, Result } from "@browse/common/error";
 import {
+  isCookieInput,
   isDumpInput,
   isGoInput,
   isInteractInput,
@@ -10,6 +11,7 @@ import {
 import { ServerSocket } from "./socket";
 import { Page, Stagehand } from "@browserbasehq/stagehand";
 import {
+  safeAddCookies,
   safeClose,
   safeContent,
   safeGoto,
@@ -20,6 +22,7 @@ import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
 import path from "path";
 import { convert } from "html-to-markdown-node";
+import { Cookie } from "playwright";
 
 export class Session {
   private static instance: Session;
@@ -71,6 +74,12 @@ export class Session {
       case "setCurrentTab":
         if (isTabInput(params)) {
           return Session.setCurrentTab(params.tabName);
+        } else {
+          return err("Invalid parameters");
+        }
+      case "addCookies":
+        if (isCookieInput(params)) {
+          return await Session.addCookies(params.cookies);
         } else {
           return err("Invalid parameters");
         }
@@ -164,6 +173,11 @@ export class Session {
     } else {
       return err(`Tab ${tabName} does not exist`);
     }
+  }
+
+  static async addCookies(cookies: Cookie[]): Promise<Result<void>> {
+    const res = await safeAddCookies(Session.instance.stagehand, cookies);
+    return res;
   }
 
   static async newTab(tabName: string, url: string): Promise<Result<Tab>> {

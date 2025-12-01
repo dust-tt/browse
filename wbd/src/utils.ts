@@ -1,6 +1,7 @@
 import { err, ok, Result } from "@browse/common/error";
 import { InteractResult } from "@browse/common/types";
 import { Page, Stagehand } from "@browserbasehq/stagehand";
+import { Cookie } from "playwright";
 
 export async function safeGoto(page: Page, url: string): Promise<Result<Page>> {
   try {
@@ -12,6 +13,27 @@ export async function safeGoto(page: Page, url: string): Promise<Result<Page>> {
     return err(e);
   }
   return ok(page);
+}
+
+export async function safeAddCookies(
+  stagehand: Stagehand,
+  cookies: Cookie[],
+): Promise<Result<void>> {
+  try {
+     const pg = stagehand.context.pages().length > 0 ? stagehand.context.pages()[0] : undefined;
+     if (!pg) {
+       console.log("No page to add cookies to");
+       return ok(undefined);
+     }
+    for (const cookie of cookies) {
+      const resp = await pg.sendCDP("Network.setCookie", cookie)
+      console.log(resp);
+    }
+    // let the cookies take effect
+    return ok(undefined);
+  } catch (e: any) {
+    return err(e);
+  }
 }
 
 export async function safeContent(page: Page): Promise<Result<string>> {

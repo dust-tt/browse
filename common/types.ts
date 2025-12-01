@@ -99,6 +99,7 @@ export const SESSION_METHODS = [
   "listTabs",
   "getCurrentTab",
   "setCurrentTab",
+  "addCookies",
   "newTab",
   "closeTab",
   "dump",
