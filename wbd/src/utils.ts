@@ -1,6 +1,18 @@
 import { err, ok, Result } from "@browse/common/error";
 import { InteractResult } from "@browse/common/types";
-import { Page, Stagehand } from "@browserbasehq/stagehand";
+import { Stagehand } from "@browserbasehq/stagehand";
+import { Browser, Page, chromium } from "playwright";
+
+export async function safeBrowser(
+  stagehand: Stagehand,
+): Promise<Result<Browser>> {
+  try {
+    const browser = await chromium.connectOverCDP(stagehand.connectURL());
+    return ok(browser);
+  } catch (e: any) {
+    return err(e);
+  }
+}
 
 export async function safeGoto(page: Page, url: string): Promise<Result<Page>> {
   try {
@@ -16,7 +28,7 @@ export async function safeGoto(page: Page, url: string): Promise<Result<Page>> {
 
 export async function safeContent(page: Page): Promise<Result<string>> {
   try {
-    const content = await page.locator("body").innerHtml();
+    const content = await page.locator("body").innerHTML();
     return ok(content);
   } catch (e: any) {
     return err(e);
@@ -24,11 +36,11 @@ export async function safeContent(page: Page): Promise<Result<string>> {
 }
 
 export async function safeNewPage(
-  stagehand: Stagehand,
+  browser: Browser,
   url: string,
 ): Promise<Result<Page>> {
   try {
-    const page = await stagehand.context.newPage();
+    const page = await browser.newPage();
     const res = await safeGoto(page, url);
     return res;
   } catch (e: any) {
