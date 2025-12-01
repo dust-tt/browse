@@ -44,11 +44,13 @@ export class Session {
       localBrowserLaunchOptions: {
         headless: !debug,
         userDataDir: dataDir,
+        ignoreDefaultArgs: true,
         args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+          "--disable-cookie-encryption",
         ],
       },
     });
@@ -266,7 +268,11 @@ export class Session {
       return err("No current tab set");
     }
     const page = Session.instance.pages[Session.instance.currentTab];
-    const res = await safeInteract(page, Session.instance.stagehand, instructions);
+    const res = await safeInteract(
+      page,
+      Session.instance.stagehand,
+      instructions,
+    );
     if (res.isErr()) {
       return res;
     }
