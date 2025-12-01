@@ -1,4 +1,4 @@
-import { BrowserError, err, ok, Result } from "./error";
+import { err, ok, Result } from "./error";
 
 export type Tab = {
   url: string;
@@ -68,7 +68,7 @@ export interface Action {
 
 export type Response = { result: any } | { error: string };
 
-export function resultToResponse<T>(result: Result<T, BrowserError>): Response {
+export function resultToResponse<T>(result: Result<T>): Response {
   if (result.isOk()) {
     return { result: result.value ?? null }; // To ensure the property is present
   } else {
@@ -76,9 +76,7 @@ export function resultToResponse<T>(result: Result<T, BrowserError>): Response {
   }
 }
 
-export function responseToResult<T>(
-  response: Response,
-): Result<T, BrowserError> {
+export function responseToResult<T>(response: Response): Result<T> {
   if ("result" in response) {
     return ok(response.result ?? undefined); // To change back to void/undefined
   } else {

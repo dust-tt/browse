@@ -4,12 +4,12 @@ import { SESSION_DIR } from "@browse/common/constants";
 import path from "path";
 import { Session } from "./session";
 import { resultToResponse } from "@browse/common/types";
-import { BrowserError, prettyString, Result } from "@browse/common/error";
+import { prettyString, Result } from "@browse/common/error";
 
 export class ServerSocket {
   private server: net.Server;
   private socketPath: string;
-  private result?: Result<unknown, BrowserError>;
+  private result?: Result<unknown>;
   /** Buffer map to handle chunked TCP data from each client */
   private buffers: Map<net.Socket, string> = new Map();
 

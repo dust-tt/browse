@@ -41,7 +41,7 @@ export class Err<E> {
   }
 }
 
-export type Result<T, E> = Ok<T> | Err<E>;
+export type Result<T> = Ok<T> | Err<BrowserError>;
 
 export class BrowserError {
   constructor(public message: string) {}
