@@ -1,42 +1,46 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, Option } from "commander";
 import { BrowserController } from "./controller";
+import { prettyString } from "@browse/common/error";
 
 const program = new Command();
 
-program
-  .option(
-    "-s, --session [name]",
-    "Name of the session to use: default is 'default'",
-    "default",
-  )
-  .option(
-    "-d, --debug",
-    "Enable debug mode (makes the browser not headless)",
-    false,
-  )
-  .hook("preAction", async (thisCommand) => {
-    const options = thisCommand.opts();
-    const res = await BrowserController.initialize(
-      options.session,
-      options.debug,
-    );
-    if (res.isErr()) {
-      console.error(res.error);
-      process.exit(1);
-    }
-  });
 
-program
-  .command("sessions")
+async function init(options: any) {
+  const res = await BrowserController.initialize(
+    options.session ?? "default",
+    options.debug ?? false,
+  );
+  if (res.isErr()) {
+    console.error(res.error);
+    process.exit(1);
+  }
+}
+
+const sessionOpt = new Option("-s, --session [name]","Name of the session to use: default is 'default'");
+const dbgOpt = new Option( "-d, --debug","Enable debug mode (makes the browser not headless)");
+
+const sessionCmd = program.command("session");
+
+sessionCmd
+  .command("list")
   .description("List all sessions")
   .action(() => {
     const res = BrowserController.listSessions();
+    console.log(prettyString(res));
+    process.exit(0);
+  });
+
+sessionCmd
+  .command("create [session]")
+  .description("Create a session")
+  .action(async (session, options) => {
+    const res = await BrowserController.createSession(session ?? "default", options.debug);
     console.log(res);
     process.exit(0);
   });
 
-program
+sessionCmd
   .command("delete")
   .description("Delete a session")
   .action(async () => {
@@ -48,7 +52,10 @@ program
 program
   .command("runtime")
   .description("Get the runtime of the current tab")
-  .action(async () => {
+  .addOption(sessionOpt)
+  .addOption(dbgOpt)
+  .action(async (options) => {
+    await init(options);
     const res = await BrowserController.runtimeSeconds();
     console.log(res);
     process.exit(0);
@@ -57,9 +64,12 @@ program
 program
   .command("dump")
   .description("Dump the current tab (max 8196 characters)")
+  .addOption(sessionOpt)
+  .addOption(dbgOpt)
   .option("-h, --html", "Dump as HTML")
   .option("-o, --offset <offset>", "Offset to start dumping from")
   .action(async (options) => {
+    await init(options);
     const res = await BrowserController.dump(options.html, options.offset);
     console.log(res);
     process.exit(0);
@@ -69,7 +79,10 @@ program
   .command("go")
   .description("Go to a URL")
   .argument("<url>", "URL to navigate to")
-  .action(async (url) => {
+  .addOption(sessionOpt)
+  .addOption(dbgOpt)
+  .action(async (url, options) => {
+    await init(options);
     const res = await BrowserController.go(url);
     console.log(res);
     process.exit(0);
@@ -79,13 +92,23 @@ program
   .command("interact")
   .description("Interact with the current tab")
   .argument("<instructions>", "Instructions to interact with")
-  .action(async (instructions) => {
+  .addOption(sessionOpt)
+  .addOption(dbgOpt)
+  .action(async (instructions, options) => {
+    await init(options);
     const res = await BrowserController.interact(instructions);
     console.log(res);
     process.exit(0);
   });
 
-const tabCmd = program.command("tab").description("Manage browser tabs");
+const tabCmd = program.command("tab")
+  .description("Manage browser tabs")
+  .addOption(sessionOpt)
+  .addOption(dbgOpt)
+  .hook("preAction", async (cmd) => {
+    const options = cmd.options;
+    await init(options);
+  });
 
 tabCmd
   .command("new")
