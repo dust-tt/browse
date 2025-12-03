@@ -8,8 +8,10 @@ import {
   isTabInput,
 } from "./types";
 import { ServerSocket } from "./socket";
-import { Page, Stagehand } from "@browserbasehq/stagehand";
+import { Stagehand } from "@browserbasehq/stagehand";
+import { Browser, Page } from "playwright";
 import {
+  safeBrowser,
   safeClose,
   safeContent,
   safeGoto,
@@ -30,6 +32,7 @@ export class Session {
   public currentTab?: string;
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
+  private browser?: Browser;
 
   private constructor(
     public sessionName: string = "default",
@@ -121,12 +124,19 @@ export class Session {
   static async initialize(
     sessionName: string = "default",
     debug: boolean = false,
-  ) {
+  ): Promise<Result<void>> {
     if (!Session.instance || Session.instance.sessionName !== sessionName) {
       Session.instance = new Session(sessionName, debug);
       await Session.instance.stagehand.init();
+      const res = await safeBrowser(Session.instance.stagehand);
+      if (res.isErr()) {
+        return res;
+      } else {
+        Session.instance.browser = res.value;
+      }
       Session.instance.socket.listen();
     }
+    return ok(undefined);
   }
 
   static deleteSession() {
@@ -176,7 +186,11 @@ export class Session {
         startTime: new Date(),
       };
 
-      const pageRes = await safeNewPage(Session.instance.stagehand, url);
+      if (!Session.instance.browser) {
+        return err("Browser not initialized");
+      }
+
+      const pageRes = await safeNewPage(Session.instance.browser, url);
       if (pageRes.isErr()) {
         return pageRes;
       }

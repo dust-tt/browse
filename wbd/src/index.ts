@@ -8,9 +8,12 @@ console.log("wbd daemon");
 program
   .option("-s, --session-name [name]", "Session name", "default")
   .option("-d, --debug", "Enable debug mode", false)
-  .action((options) => {
+  .action(async (options) => {
     console.log(`Starting daemon for session ${options.sessionName}`);
-    Session.initialize(options.sessionName, options.debug);
+    const res = await Session.initialize(options.sessionName, options.debug);
+    if (res.isErr()) {
+      console.log(res);
+    }
   });
 
 program.parse();
