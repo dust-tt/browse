@@ -2,9 +2,9 @@
 import { Command, Option } from "commander";
 import { BrowserController } from "./controller";
 import { prettyString } from "@browse/common/error";
+import { readFile } from "node:fs/promises";
 
 const program = new Command();
-
 
 async function init(options: any) {
   const res = await BrowserController.initialize(
@@ -17,8 +17,14 @@ async function init(options: any) {
   }
 }
 
-const sessionOpt = new Option("-s, --session [name]","Name of the session to use: default is 'default'");
-const dbgOpt = new Option( "-d, --debug","Enable debug mode (makes the browser not headless)");
+const sessionOpt = new Option(
+  "-s, --session [name]",
+  "Name of the session to use: default is 'default'",
+);
+const dbgOpt = new Option(
+  "-d, --debug",
+  "Enable debug mode (makes the browser not headless)",
+);
 
 const sessionCmd = program.command("session");
 
@@ -34,9 +40,24 @@ sessionCmd
 sessionCmd
   .command("create [session]")
   .addOption(dbgOpt)
+  .option("-c, --cookies <file>", "cookies json file")
   .description("Create a session")
   .action(async (session, options) => {
-    const res = await BrowserController.createSession(session ?? "default", options.debug);
+    let res = await BrowserController.createSession(
+      session ?? "default",
+      options.debug,
+    );
+    if (res.isErr()) {
+      console.log(res);
+      process.exit(1);
+    }
+    const content = (await readFile(options.cookies)).toString();
+    const cookies = JSON.parse(content);
+    if (!Array.isArray(cookies)) {
+      console.log("Invalid cookies file");
+      process.exit(1);
+    }
+    res = await BrowserController.addCookies(cookies);
     console.log(res);
     process.exit(0);
   });
@@ -102,7 +123,8 @@ program
     process.exit(0);
   });
 
-const tabCmd = program.command("tab")
+const tabCmd = program
+  .command("tab")
   .description("Manage browser tabs")
   .addOption(sessionOpt)
   .addOption(dbgOpt)

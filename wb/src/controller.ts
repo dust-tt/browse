@@ -11,6 +11,7 @@ import {
 import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
 import path from "path";
+import { Cookie } from "playwright";
 
 export class BrowserController {
   private socket: ClientSocket;
@@ -78,7 +79,7 @@ export class BrowserController {
       // Session already deleted or never created
     } else if (!fs.existsSync(path.join(sessionPath, "sock"))) {
       // Socket file non-existent, just delete data
-      fs.rm(sessionPath, { recursive: true }, () => {});
+      fs.rmSync(sessionPath, { recursive: true });
     } else {
       const socketRes = await ClientSocket.connect(sessionName);
       // If you cannot connect, then the socket is stale
@@ -86,7 +87,7 @@ export class BrowserController {
         await socketRes.value.deleteSession();
       }
       // Delete all session data & socket file
-      fs.rm(sessionPath, { recursive: true }, () => {});
+      fs.rmSync(sessionPath, { recursive: true });
     }
     return ok(undefined);
   }
@@ -140,6 +141,15 @@ export class BrowserController {
     const res = await BrowserController.send("setCurrentTab", {
       tabName,
     });
+    if (res.isErr()) {
+      return res;
+    } else {
+      return ok(undefined);
+    }
+  }
+
+  static async addCookies(cookies: Cookie[]): Promise<Result<void>> {
+    const res = await BrowserController.send("addCookies", { cookies });
     if (res.isErr()) {
       return res;
     } else {
