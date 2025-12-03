@@ -69,21 +69,33 @@ export class BrowserController {
     });
   }
 
-  static async deleteSession() {
-    await BrowserController.socket.deleteSession();
-    // Delete all session data & socket file
+  static async deleteSession(sessionName: string = "default") : Promise<Result<void>>{
     const sessionPath = path.join(
       SESSION_DIR,
-      BrowserController.instance.sessionName,
+      sessionName,
     );
-    fs.rmdirSync(sessionPath, { recursive: true });
+    if (!fs.existsSync(sessionPath)) {
+      // Session already deleted or never created
+    } else if (!fs.existsSync(path.join(sessionPath, "sock"))) {
+      // Socket file non-existent, just delete data
+      fs.rm(sessionPath, { recursive: true }, () => {});
+    } else {
+      const socketRes = await ClientSocket.connect(sessionName);
+      // If you cannot connect, then the socket is stale
+      if (socketRes.isOk()) {
+        await socketRes.value.deleteSession();
+      }
+      // Delete all session data & socket file
+      fs.rm(sessionPath, { recursive: true }, () => {});
+    }
+    return ok(undefined);
   }
 
   static async send(
     method: SessionMethod,
     params?: unknown,
   ): Promise<Result<unknown>> {
-    const res = await BrowserController.instance.socket.send(method, params);
+    const res = await BrowserController.socket.send(method, params);
     BrowserController.socket.end();
     return res;
   }
