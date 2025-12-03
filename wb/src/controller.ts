@@ -44,8 +44,23 @@ export class BrowserController {
     return ok(undefined);
   }
 
+  static async createSession(
+    name: string,
+    debug?: boolean,
+  ): Promise<Result<void>> {
+    const res = await ClientSocket.createSession(name, debug);
+    if (res.isErr()) {
+      return res;
+    }
+    try {
+      BrowserController.instance = new BrowserController(name);
+    } catch (e: any) {
+      return err(e);
+    }
+    return ok(undefined);
+  }
+
   static listSessions(): { name: string; isRunning: boolean }[] {
-    BrowserController.socket.end();
     return fs.readdirSync(SESSION_DIR).map((sessionName) => {
       return {
         name: sessionName,

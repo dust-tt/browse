@@ -63,7 +63,7 @@ export class ClientSocket {
     debug: boolean = false,
   ): Promise<Result<void>> {
     if (!fs.existsSync(socketPath(sessionName))) {
-      return ClientSocket.createSession(sessionName, debug);
+      return err(`Session ${sessionName} doesn't exist`);
     } else {
       // Try to connect
       const res = await ClientSocket.connect(sessionName);
