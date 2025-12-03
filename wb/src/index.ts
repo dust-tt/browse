@@ -33,6 +33,7 @@ sessionCmd
 
 sessionCmd
   .command("create [session]")
+  .addOption(dbgOpt)
   .description("Create a session")
   .action(async (session, options) => {
     const res = await BrowserController.createSession(session ?? "default", options.debug);
@@ -41,10 +42,10 @@ sessionCmd
   });
 
 sessionCmd
-  .command("delete")
+  .command("delete [session]")
   .description("Delete a session")
-  .action(async () => {
-    const res = await BrowserController.deleteSession();
+  .action(async (session) => {
+    const res = await BrowserController.deleteSession(session);
     console.log(res);
     process.exit(0);
   });
