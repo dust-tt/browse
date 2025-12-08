@@ -3,6 +3,7 @@ import {
   InteractResult,
   isCookieInput,
   isSessionMethod,
+  NetworkEvent,
   Tab,
 } from "@browse/common/types";
 import { err, ok, Result } from "@browse/common/error";
@@ -14,7 +15,7 @@ import {
   isTabInput,
 } from "./types";
 import { ServerSocket } from "./socket";
-import { Page, Stagehand } from "@anonx3247/stagehand";
+import { NetworkMessage, Page, Stagehand } from "@anonx3247/stagehand";
 import {
   safeAddCookies,
   safeClose,
@@ -22,6 +23,8 @@ import {
   safeGoto,
   safeInteract,
   safeNewPage,
+  safeStartNetworkRecord,
+  safeStopNetworkRecord,
 } from "./utils";
 import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
@@ -37,6 +40,8 @@ export class Session {
   public currentTab?: string;
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
+  private events: NetworkEvent[] = [];
+  private networkListener?: (networkMessage: NetworkMessage) => void;
 
   private constructor(
     public sessionName: string = "default",
@@ -69,6 +74,10 @@ export class Session {
       return err(`Invalid method ${String(method)}`);
     }
     switch (method) {
+      case "startNetworkRecord":
+        return Session.startNetworkRecord();
+      case "stopNetworkRecord":
+        return Session.stopNetworkRecord();
       case "runtimeSeconds":
         return Session.runtimeSeconds();
       case "listTabs":
@@ -123,6 +132,36 @@ export class Session {
         Session.deleteSession();
         return ok(undefined);
     }
+  }
+
+  static startNetworkRecord(): Result<void> {
+    if (!Session.instance.currentTab) {
+      return err("No current tab set");
+    }
+    const page = Session.instance.pages[Session.instance.currentTab];
+    Session.instance.events = [];
+    const res = safeStartNetworkRecord(page, Session.instance.events);
+    if (res.isErr()) {
+      return res;
+    }
+    const [pg, listener] = res.value;
+    Session.instance.pages[Session.instance.currentTab] = pg;
+    Session.instance.networkListener = listener;
+    return ok(undefined);
+  }
+
+  static stopNetworkRecord(): Result<NetworkEvent[]> {
+    if (!Session.instance.currentTab) {
+      return err("No current tab set");
+    }
+    const page = Session.instance.pages[Session.instance.currentTab];
+    const res = safeStopNetworkRecord(page, Session.instance.networkListener);
+    if (res.isErr()) {
+      return res;
+    }
+    Session.instance.pages[Session.instance.currentTab] = res.value;
+    console.log("SIZE:", Session.instance.events.length);
+    return ok(Session.instance.events);
   }
 
   static runtimeSeconds(): Result<number> {

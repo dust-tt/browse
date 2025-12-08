@@ -1,6 +1,61 @@
 import { err, ok, Result } from "@browse/common/error";
-import { Cookie, InteractResult } from "@browse/common/types";
-import { Page, Stagehand } from "@anonx3247/stagehand";
+import { Cookie, InteractResult, NetworkEvent } from "@browse/common/types";
+import { Page, Stagehand, NetworkMessage } from "@anonx3247/stagehand";
+
+export function safeStartNetworkRecord(
+  page: Page,
+  events: NetworkEvent[],
+): Result<[Page, (networkMessage: NetworkMessage) => void]> {
+  try {
+    const listener = (networkMessage: NetworkMessage) => {
+      console.log(networkMessage);
+      switch (networkMessage.type()) {
+        case "request":
+          events.push({
+            type: "request",
+            requestId: networkMessage.requestId(),
+            timestamp: networkMessage.timestamp(),
+            options: {
+              url: networkMessage.url(),
+              method: networkMessage.method() ?? "GET",
+              headers: networkMessage.requestHeaders()!,
+              body: networkMessage.postData(),
+            },
+          });
+          break;
+        case "response":
+          events.push({
+            type: "response",
+            requestId: networkMessage.requestId(),
+            timestamp: networkMessage.timestamp(),
+            options: {
+              url: networkMessage.url(),
+              status: networkMessage.status()!,
+              headers: networkMessage.responseHeaders()!,
+              body: networkMessage.postData(),
+            },
+          });
+          break;
+      }
+    };
+    const pg = page.on("network", listener);
+    return ok([pg, listener]);
+  } catch (e: any) {
+    return err(e);
+  }
+}
+
+export function safeStopNetworkRecord(
+  page: Page,
+  listener?: (networkMessage: NetworkMessage) => void,
+): Result<Page> {
+  try {
+    const pg = page.off("network", listener ?? ((_networkMessage) => { }));
+    return ok(pg);
+  } catch (e: any) {
+    return err(e);
+  }
+}
 
 export async function safeGoto(page: Page, url: string): Promise<Result<Page>> {
   try {
