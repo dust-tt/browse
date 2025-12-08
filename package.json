@@ -16,7 +16,9 @@
     "cookie-getter": "tsx cookie-getter.ts",
     "install:bins": "npm run build && npm link -w wb && npm link -w wbd",
     "uninstall:bins": "npm unlink -w wb && npm unlink -w wbd",
-    "clean": "rm -rf common/dist wb/dist wbd/dist node_modules common/node_modules wb/node_modules wbd/node_modules"
+    "clean": "rm -rf common/dist wb/dist wbd/dist node_modules common/node_modules wb/node_modules wbd/node_modules",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --fix --ext .ts,.tsx"
   },
   "devDependencies": {
     "@types/node": "^20.19.25",
