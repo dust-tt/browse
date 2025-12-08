@@ -1,4 +1,4 @@
-import { Stagehand, Page } from "@browserbasehq/stagehand";
+import { Stagehand, Page } from "@anonx3247/stagehand";
 import { chromium, Browser } from "playwright";
 
 interface BenchmarkResult {

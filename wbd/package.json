@@ -12,8 +12,8 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@anonx3247/stagehand": "^1.0.0",
     "@browse/common": "^1.0.0",
-    "@browserbasehq/stagehand": "^3.0.3",
     "html-to-markdown-node": "^2.9.0",
     "zod": "^3.22.4"
   },
