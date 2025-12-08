@@ -14,7 +14,7 @@ import {
   isTabInput,
 } from "./types";
 import { ServerSocket } from "./socket";
-import { Page, Stagehand } from "@browserbasehq/stagehand";
+import { Page, Stagehand } from "@anonx3247/stagehand";
 import {
   safeAddCookies,
   safeClose,

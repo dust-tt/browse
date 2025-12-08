@@ -1,6 +1,6 @@
 import { err, ok, Result } from "@browse/common/error";
 import { Cookie, InteractResult } from "@browse/common/types";
-import { Page, Stagehand } from "@browserbasehq/stagehand";
+import { Page, Stagehand } from "@anonx3247/stagehand";
 
 export async function safeGoto(page: Page, url: string): Promise<Result<Page>> {
   try {
