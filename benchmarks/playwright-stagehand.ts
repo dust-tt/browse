@@ -30,7 +30,9 @@ const TEST_URL_2 = "https://www.wikipedia.org";
 function checkEnvironment(): void {
   if (!process.env.ANTHROPIC_API_KEY && !process.env.OPENAI_API_KEY) {
     console.warn("⚠️  Warning: No ANTHROPIC_API_KEY or OPENAI_API_KEY found.");
-    console.warn("   Stagehand may fail to initialize. Set one of these environment variables.");
+    console.warn(
+      "   Stagehand may fail to initialize. Set one of these environment variables.",
+    );
     console.warn("   Example: export ANTHROPIC_API_KEY=your_key_here\n");
   }
 }
@@ -40,7 +42,7 @@ async function sleep(ms: number): Promise<void> {
 }
 
 async function measureTime<T>(
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<{ result: T; duration: number }> {
   const start = performance.now();
   const result = await fn();
@@ -66,7 +68,7 @@ function calculateStats(timings: number[]): {
 
 async function runBenchmark(
   fn: () => Promise<void>,
-  runs: number = RUNS_PER_TEST
+  runs: number = RUNS_PER_TEST,
 ): Promise<{ successes: number; failures: number; timings: number[] }> {
   const results: RunResult[] = [];
 
@@ -97,14 +99,16 @@ async function runBenchmark(
 async function benchmarkGoto(
   stagehand: Stagehand,
   stagehandPage: Page,
-  playwrightPage?: Page
+  playwrightPage?: Page,
 ): Promise<BenchmarkResult> {
   const mode = playwrightPage ? "with-playwright" : "stagehand-only";
   console.log(`\n[${mode}] Testing: Page Navigation (goto)`);
 
   const { successes, failures, timings } = await runBenchmark(async () => {
-    const page = playwrightPage || stagehandPage;
-    const response = await page.goto(TEST_URL, { waitUntil: "domcontentloaded" });
+    const page = playwrightPage ?? stagehandPage;
+    const response = await page.goto(TEST_URL, {
+      waitUntil: "domcontentloaded",
+    });
     if (!response || !response.ok()) {
       throw new Error("Navigation failed");
     }
@@ -117,7 +121,10 @@ async function benchmarkGoto(
     successes,
     failures,
     successRate: (successes / RUNS_PER_TEST) * 100,
-    timings: timings.length > 0 ? calculateStats(timings) : { min: 0, max: 0, mean: 0, median: 0 },
+    timings:
+      timings.length > 0
+        ? calculateStats(timings)
+        : { min: 0, max: 0, mean: 0, median: 0 },
   };
 }
 
@@ -125,13 +132,13 @@ async function benchmarkGoto(
 async function benchmarkDumpContent(
   stagehand: Stagehand,
   stagehandPage: Page,
-  playwrightPage?: Page
+  playwrightPage?: Page,
 ): Promise<BenchmarkResult> {
   const mode = playwrightPage ? "with-playwright" : "stagehand-only";
   console.log(`\n[${mode}] Testing: Dump Page Content`);
 
   // Navigate to page first
-  const page = playwrightPage || stagehandPage;
+  const page = playwrightPage ?? stagehandPage;
   await page.goto(TEST_URL, { waitUntil: "domcontentloaded" });
   await sleep(500);
 
@@ -156,14 +163,17 @@ async function benchmarkDumpContent(
     successes,
     failures,
     successRate: (successes / RUNS_PER_TEST) * 100,
-    timings: timings.length > 0 ? calculateStats(timings) : { min: 0, max: 0, mean: 0, median: 0 },
+    timings:
+      timings.length > 0
+        ? calculateStats(timings)
+        : { min: 0, max: 0, mean: 0, median: 0 },
   };
 }
 
 // Test 3: Creating New Pages
 async function benchmarkNewPage(
   stagehand: Stagehand,
-  playwrightBrowser?: Browser
+  playwrightBrowser?: Browser,
 ): Promise<BenchmarkResult> {
   const mode = playwrightBrowser ? "with-playwright" : "stagehand-only";
   console.log(`\n[${mode}] Testing: Create New Page`);
@@ -190,7 +200,7 @@ async function benchmarkNewPage(
   for (const page of pagesToClose) {
     try {
       await page.close();
-    } catch (e) {
+    } catch (_) {
       // Ignore errors during cleanup
     }
   }
@@ -202,7 +212,10 @@ async function benchmarkNewPage(
     successes,
     failures,
     successRate: (successes / RUNS_PER_TEST) * 100,
-    timings: timings.length > 0 ? calculateStats(timings) : { min: 0, max: 0, mean: 0, median: 0 },
+    timings:
+      timings.length > 0
+        ? calculateStats(timings)
+        : { min: 0, max: 0, mean: 0, median: 0 },
   };
 }
 
@@ -210,13 +223,13 @@ async function benchmarkNewPage(
 async function benchmarkAct(
   stagehand: Stagehand,
   stagehandPage: Page,
-  playwrightPage?: Page
+  playwrightPage?: Page,
 ): Promise<BenchmarkResult> {
   const mode = playwrightPage ? "with-playwright" : "stagehand-only";
   console.log(`\n[${mode}] Testing: Stagehand Act (Interact)`);
 
   // Navigate to Wikipedia for interaction
-  const page = playwrightPage || stagehandPage;
+  const page = playwrightPage ?? stagehandPage;
   await page.goto(TEST_URL_2, { waitUntil: "domcontentloaded" });
   await sleep(1000);
 
@@ -235,7 +248,10 @@ async function benchmarkAct(
     successes,
     failures,
     successRate: (successes / RUNS_PER_TEST) * 100,
-    timings: timings.length > 0 ? calculateStats(timings) : { min: 0, max: 0, mean: 0, median: 0 },
+    timings:
+      timings.length > 0
+        ? calculateStats(timings)
+        : { min: 0, max: 0, mean: 0, median: 0 },
   };
 }
 
@@ -243,12 +259,12 @@ async function benchmarkAct(
 async function benchmarkGetUrl(
   stagehand: Stagehand,
   stagehandPage: Page,
-  playwrightPage?: Page
+  playwrightPage?: Page,
 ): Promise<BenchmarkResult> {
   const mode = playwrightPage ? "with-playwright" : "stagehand-only";
   console.log(`\n[${mode}] Testing: Get Current URL`);
 
-  const page = playwrightPage || stagehandPage;
+  const page = playwrightPage ?? stagehandPage;
   await page.goto(TEST_URL, { waitUntil: "domcontentloaded" });
   await sleep(500);
 
@@ -266,7 +282,10 @@ async function benchmarkGetUrl(
     successes,
     failures,
     successRate: (successes / RUNS_PER_TEST) * 100,
-    timings: timings.length > 0 ? calculateStats(timings) : { min: 0, max: 0, mean: 0, median: 0 },
+    timings:
+      timings.length > 0
+        ? calculateStats(timings)
+        : { min: 0, max: 0, mean: 0, median: 0 },
   };
 }
 
@@ -302,11 +321,18 @@ function printResults(results: BenchmarkResult[]): void {
     const stagehandOnly = opResults.find((r) => r.mode === "stagehand-only");
     const withPlaywright = opResults.find((r) => r.mode === "with-playwright");
 
-    if (stagehandOnly && withPlaywright && stagehandOnly.successes > 0 && withPlaywright.successes > 0) {
+    if (
+      stagehandOnly &&
+      withPlaywright &&
+      stagehandOnly.successes > 0 &&
+      withPlaywright.successes > 0
+    ) {
       const meanDiff = withPlaywright.timings.mean - stagehandOnly.timings.mean;
-      const percentDiff = ((meanDiff / stagehandOnly.timings.mean) * 100);
+      const percentDiff = (meanDiff / stagehandOnly.timings.mean) * 100;
       console.log(`\nLatency Comparison:`);
-      console.log(`  Difference: ${meanDiff >= 0 ? '+' : ''}${meanDiff.toFixed(2)}ms (${percentDiff >= 0 ? '+' : ''}${percentDiff.toFixed(2)}%)`);
+      console.log(
+        `  Difference: ${meanDiff >= 0 ? "+" : ""}${meanDiff.toFixed(2)}ms (${percentDiff >= 0 ? "+" : ""}${percentDiff.toFixed(2)}%)`,
+      );
       if (Math.abs(percentDiff) < 5) {
         console.log(`  Impact: Negligible`);
       } else if (Math.abs(percentDiff) < 15) {
@@ -343,7 +369,9 @@ async function main() {
     console.log("✓ Stagehand initialized");
   } catch (error: any) {
     console.error("✗ Failed to initialize Stagehand:", error.message);
-    console.error("  Make sure you have set ANTHROPIC_API_KEY or OPENAI_API_KEY");
+    console.error(
+      "  Make sure you have set ANTHROPIC_API_KEY or OPENAI_API_KEY",
+    );
     process.exit(1);
   }
 
@@ -418,11 +446,19 @@ async function main() {
       throw new Error("Could not get Playwright page from CDP connection");
     }
 
-    results.push(await benchmarkGoto(stagehand2, stagehand2Page, playwrightPage));
-    results.push(await benchmarkDumpContent(stagehand2, stagehand2Page, playwrightPage));
+    results.push(
+      await benchmarkGoto(stagehand2, stagehand2Page, playwrightPage),
+    );
+    results.push(
+      await benchmarkDumpContent(stagehand2, stagehand2Page, playwrightPage),
+    );
     results.push(await benchmarkNewPage(stagehand2, browser));
-    results.push(await benchmarkGetUrl(stagehand2, stagehand2Page, playwrightPage));
-    results.push(await benchmarkAct(stagehand2, stagehand2Page, playwrightPage));
+    results.push(
+      await benchmarkGetUrl(stagehand2, stagehand2Page, playwrightPage),
+    );
+    results.push(
+      await benchmarkAct(stagehand2, stagehand2Page, playwrightPage),
+    );
   } catch (error: any) {
     console.error("Error during playwright tests:", error.message);
   } finally {
@@ -430,7 +466,7 @@ async function main() {
       try {
         await browser.close();
         console.log("\n✓ Playwright browser closed");
-      } catch (e) {
+      } catch (_) {
         // Ignore close errors
       }
     }
