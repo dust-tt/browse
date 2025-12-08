@@ -2,7 +2,7 @@
 import { Command, Option } from "commander";
 import { BrowserController } from "./controller";
 import { prettyString, Result } from "@browse/common/error";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 
 const program = new Command();
 
@@ -123,6 +123,37 @@ program
     await init(options);
     const res = await BrowserController.interact(instructions);
     handleResult(res);
+  });
+
+
+const networkCmd = program
+  .command("network")
+  .description("Record network events")
+  .addOption(sessionOpt)
+  .addOption(dbgOpt)
+  .hook("preAction", async (cmd) => {
+    const options = cmd.options;
+    await init(options);
+  });
+
+networkCmd
+  .command("start")
+  .description("Start recording network events")
+  .action(async (options) => {
+    const res = await BrowserController.startNetworkRecord();
+    handleResult(res);
+  });
+
+networkCmd
+  .command("stop")
+  .description("Stop recording network events")
+  .option("-o, --output <file>", "Output file", "network.json")
+  .action(async (options) => {
+    const res = await BrowserController.stopNetworkRecord();
+    const content = handleResult(res, false);
+    await writeFile(options.output, JSON.stringify(content, null, 2));
+    console.log(`Saved network activity to ${options.output}`);
+    process.exit(0);
   });
 
 const tabCmd = program

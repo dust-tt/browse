@@ -5,7 +5,9 @@ import {
   InteractResult,
   isInteractResult,
   isNamedTab,
+  isNetworkEvent,
   isTab,
+  NetworkEvent,
   SessionMethod,
   Tab,
 } from "@browse/common/types";
@@ -98,6 +100,26 @@ export class BrowserController {
     const res = await BrowserController.socket.send(method, params);
     BrowserController.socket.end();
     return res;
+  }
+
+  static async startNetworkRecord(): Promise<Result<void>> {
+    const res = await BrowserController.send("startNetworkRecord");
+    if (res.isErr()) {
+      return res;
+    } else {
+      return ok(undefined);
+    }
+  }
+
+  static async stopNetworkRecord(): Promise<Result<NetworkEvent[]>> {
+    const res = await BrowserController.send("stopNetworkRecord");
+    if (res.isErr()) {
+      return res;
+    } else if (!Array.isArray(res.value) || res.value.some((v) => !isNetworkEvent(v))) {
+      return err(`Got non-array response: ${JSON.stringify(res)}`);
+    } else {
+      return ok(res.value);
+    }
   }
 
   static async runtimeSeconds(): Promise<Result<number>> {

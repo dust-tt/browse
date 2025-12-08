@@ -106,6 +106,8 @@ export const SESSION_METHODS = [
   "go",
   "interact",
   "deleteSession",
+  "startNetworkRecord",
+  "stopNetworkRecord",
 ] as const;
 
 export const SESSION_METHODS_STR = SESSION_METHODS.map((m) => `"${m}"`).join(
@@ -117,6 +119,73 @@ export function isSessionMethod(method: any): method is SessionMethod {
     typeof method === "string" &&
     SESSION_METHODS.includes(method as SessionMethod)
   );
+}
+
+export type NetworkEvent = ResponseEvent | RequestEvent;
+
+export type ResponseEvent = {
+  type: "response";
+  requestId: string;
+  timestamp: number;
+  options: {
+    url: string;
+    status: number;
+    headers: Record<string, string>;
+    body?: string;
+  };
+};
+
+export type RequestEvent = {
+  type: "request";
+  requestId: string;
+  timestamp: number;
+  options: {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body?: string;
+  };
+};
+
+export function isRequestEvent(event: any): event is RequestEvent {
+  return (
+    typeof event === "object" &&
+    "type" in event &&
+    event.type === "request" &&
+    "requestId" in event &&
+    typeof event.requestId === "string" &&
+    "timestamp" in event &&
+    typeof event.timestamp === "number" &&
+    "options" in event &&
+    "url" in event.options &&
+    typeof event.options.url === "string" &&
+    "method" in event.options && typeof event.options.method === "string" &&
+    "headers" in event.options && typeof event.options.headers === "object" &&
+    ("body" in event.options ? typeof event.options.body === "string" : true)
+  );
+}
+
+export function isResponseEvent(event: any): event is ResponseEvent {
+  return (
+    typeof event === "object" &&
+    "type" in event &&
+    event.type === "response" &&
+    "requestId" in event &&
+    typeof event.requestId === "string" &&
+    "timestamp" in event &&
+    typeof event.timestamp === "number" &&
+    "options" in event &&
+    "url" in event.options &&
+    typeof event.options.url === "string" &&
+    "status" in event.options &&
+    typeof event.options.status === "number" &&
+    "headers" in event.options && typeof event.options.headers === "object" &&
+    ("body" in event.options ? typeof event.options.body === "string" : true)
+  );
+}
+
+export function isNetworkEvent(event: any): event is NetworkEvent {
+  return isRequestEvent(event) || isResponseEvent(event);
 }
 
 export type Cookie = {
