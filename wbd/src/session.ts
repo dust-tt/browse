@@ -1,7 +1,12 @@
-import { InteractResult, isSessionMethod, Tab } from "@browse/common/types";
+import {
+  Cookie,
+  InteractResult,
+  isCookieInput,
+  isSessionMethod,
+  Tab,
+} from "@browse/common/types";
 import { err, ok, Result } from "@browse/common/error";
 import {
-  isCookieInput,
   isDumpInput,
   isGoInput,
   isInteractInput,
@@ -22,7 +27,6 @@ import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
 import path from "path";
 import { convert } from "html-to-markdown-node";
-import { Cookie } from "playwright";
 
 export class Session {
   private static instance: Session;
