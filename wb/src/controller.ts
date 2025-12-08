@@ -1,6 +1,7 @@
 import { err, ok, Result } from "@browse/common/error";
 import { ClientSocket } from "./socket";
 import {
+  Cookie,
   InteractResult,
   isInteractResult,
   isNamedTab,
@@ -11,7 +12,6 @@ import {
 import { SESSION_DIR } from "@browse/common/constants";
 import fs from "fs";
 import path from "path";
-import { Cookie } from "playwright";
 
 export class BrowserController {
   private socket: ClientSocket;
@@ -70,11 +70,10 @@ export class BrowserController {
     });
   }
 
-  static async deleteSession(sessionName: string = "default") : Promise<Result<void>>{
-    const sessionPath = path.join(
-      SESSION_DIR,
-      sessionName,
-    );
+  static async deleteSession(
+    sessionName: string = "default",
+  ): Promise<Result<void>> {
+    const sessionPath = path.join(SESSION_DIR, sessionName);
     if (!fs.existsSync(sessionPath)) {
       // Session already deleted or never created
     } else if (!fs.existsSync(path.join(sessionPath, "sock"))) {

@@ -118,3 +118,44 @@ export function isSessionMethod(method: any): method is SessionMethod {
     SESSION_METHODS.includes(method as SessionMethod)
   );
 }
+
+export type Cookie = {
+  name: string;
+  value: string;
+  domain: string;
+  path: string;
+  expires: number;
+  httpOnly: boolean;
+  secure: boolean;
+  sameSite: "Strict" | "Lax" | "None";
+  partitionKey?: string;
+};
+
+export function isCookieInput(params: any): params is { cookies: Cookie[] } {
+  return (
+    "cookies" in params &&
+    Array.isArray(params.cookies) &&
+    params.cookies.every(
+      (cookie: any): cookie is Cookie =>
+        "name" in cookie &&
+        typeof cookie.name === "string" &&
+        "value" in cookie &&
+        typeof cookie.value === "string" &&
+        "domain" in cookie &&
+        typeof cookie.domain === "string" &&
+        "path" in cookie &&
+        typeof cookie.path === "string" &&
+        "expires" in cookie &&
+        typeof cookie.expires === "number" &&
+        "httpOnly" in cookie &&
+        typeof cookie.httpOnly === "boolean" &&
+        "secure" in cookie &&
+        typeof cookie.secure === "boolean" &&
+        "sameSite" in cookie &&
+        ["Strict", "Lax", "None"].includes(cookie.sameSite) &&
+        ("partitionKey" in cookie
+          ? typeof cookie.partitionKey === "string"
+          : true),
+    )
+  );
+}
