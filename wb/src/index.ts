@@ -1,20 +1,31 @@
 #!/usr/bin/env node
 import { Command, Option } from "commander";
 import { BrowserController } from "./controller";
-import { prettyString } from "@browse/common/error";
+import { prettyString, Result } from "@browse/common/error";
 import { readFile } from "node:fs/promises";
 
 const program = new Command();
+
+function handleResult<T>(res: Result<T>, exitOnValue = true): T {
+  if (res.isErr()) {
+    console.error(res.error);
+    process.exit(1);
+  }
+  else {
+    if (exitOnValue) {
+      console.log(prettyString(res.value));
+      process.exit(0);
+    }
+    return res.value;
+  }
+}
 
 async function init(options: any) {
   const res = await BrowserController.initialize(
     options.session ?? "default",
     options.debug ?? false,
   );
-  if (res.isErr()) {
-    console.error(res.error);
-    process.exit(1);
-  }
+  handleResult(res, false);
 }
 
 const sessionOpt = new Option(
@@ -47,10 +58,7 @@ sessionCmd
       session ?? "default",
       options.debug,
     );
-    if (res.isErr()) {
-      console.log(res);
-      process.exit(1);
-    }
+    handleResult(res, false);
     const content = (await readFile(options.cookies)).toString();
     const cookies = JSON.parse(content);
     if (!Array.isArray(cookies)) {
@@ -58,8 +66,7 @@ sessionCmd
       process.exit(1);
     }
     res = await BrowserController.addCookies(cookies);
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 sessionCmd
@@ -67,8 +74,7 @@ sessionCmd
   .description("Delete a session")
   .action(async (session) => {
     const res = await BrowserController.deleteSession(session);
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 program
@@ -79,8 +85,7 @@ program
   .action(async (options) => {
     await init(options);
     const res = await BrowserController.runtimeSeconds();
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 program
@@ -93,8 +98,7 @@ program
   .action(async (options) => {
     await init(options);
     const res = await BrowserController.dump(options.html, options.offset);
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 program
@@ -106,8 +110,7 @@ program
   .action(async (url, options) => {
     await init(options);
     const res = await BrowserController.go(url);
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 program
@@ -119,8 +122,7 @@ program
   .action(async (instructions, options) => {
     await init(options);
     const res = await BrowserController.interact(instructions);
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 const tabCmd = program
@@ -140,8 +142,7 @@ tabCmd
   .argument("<url>", "URL to navigate to")
   .action(async (name, url) => {
     const res = await BrowserController.newTab(name, url);
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 tabCmd
@@ -150,8 +151,7 @@ tabCmd
   .argument("<name>", "Name of the tab")
   .action(async (name) => {
     const res = await BrowserController.closeTab(name);
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 tabCmd
@@ -159,8 +159,7 @@ tabCmd
   .description("List all tabs")
   .action(async () => {
     const res = await BrowserController.listTabs();
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 tabCmd
@@ -168,8 +167,7 @@ tabCmd
   .description("Get the current tab")
   .action(async () => {
     const res = await BrowserController.getCurrentTab();
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 tabCmd
@@ -178,8 +176,7 @@ tabCmd
   .argument("<name>", "Name of the tab")
   .action(async (name) => {
     const res = await BrowserController.setCurrentTab(name);
-    console.log(res);
-    process.exit(0);
+    handleResult(res);
   });
 
 program.parse();
