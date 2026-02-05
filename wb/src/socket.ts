@@ -87,6 +87,7 @@ export class ClientSocket {
     const child = spawn("wbd", options, {
       detached: true,
       stdio: "ignore",
+      env: { ...process.env },
     });
 
     // Unref the child process so the parent can exit independently

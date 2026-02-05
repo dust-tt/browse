@@ -27,6 +27,8 @@ import {
   safeStopNetworkRecord,
 } from "./utils";
 import { SESSION_DIR } from "@browse/common/constants";
+import { Browser, getBrowserFromEnv } from "@browse/common/browser";
+import { startLightpanda, stopLightpanda, getLightpandaCdpUrl } from "./lightpanda";
 import fs from "fs";
 import path from "path";
 import { convert } from "html-to-markdown-node";
@@ -40,30 +42,47 @@ export class Session {
   public currentTab?: string;
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
+  private browser: Browser;
   private events: NetworkEvent[] = [];
   private networkListener?: (networkMessage: NetworkMessage) => void;
 
   private constructor(
     public sessionName: string = "default",
     debug: boolean = false,
+    browser: Browser = "chrome",
   ) {
     this.startTime = new Date();
     this.socket = new ServerSocket(sessionName);
+    this.browser = browser;
     const dataDir = path.join(SESSION_DIR, sessionName, "data");
     fs.mkdirSync(dataDir, { recursive: true });
-    this.stagehand = new Stagehand({
-      env: "LOCAL",
-      localBrowserLaunchOptions: {
-        headless: !debug,
-        userDataDir: dataDir,
-        args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-        ],
-      },
-    });
+
+    if (browser === "lightpanda") {
+      // Connect to Lightpanda via CDP
+      this.stagehand = new Stagehand({
+        env: "LOCAL",
+        localBrowserLaunchOptions: {
+          cdpUrl: getLightpandaCdpUrl(),
+          headless: true,
+        } as any,
+      });
+    } else {
+      // Launch Chrome
+      this.stagehand = new Stagehand({
+        env: "LOCAL",
+        localBrowserLaunchOptions: {
+          headless: !debug,
+          userDataDir: dataDir,
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+          ],
+        },
+      });
+    }
+    console.log(`Session initialized with ${browser} browser`);
   }
 
   static async call(
@@ -173,15 +192,24 @@ export class Session {
   static async initialize(
     sessionName: string = "default",
     debug: boolean = false,
+    browser?: Browser,
   ) {
+    const effectiveBrowser = browser ?? getBrowserFromEnv();
+
     if (!Session.instance || Session.instance.sessionName !== sessionName) {
-      Session.instance = new Session(sessionName, debug);
+      if (effectiveBrowser === "lightpanda") {
+        await startLightpanda();
+      }
+      Session.instance = new Session(sessionName, debug, effectiveBrowser);
       await Session.instance.stagehand.init();
       Session.instance.socket.listen();
     }
   }
 
   static deleteSession() {
+    if (Session.instance?.browser === "lightpanda") {
+      stopLightpanda();
+    }
     process.exit(0);
   }
 
