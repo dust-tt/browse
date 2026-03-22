@@ -8,8 +8,7 @@
     ".": "./dist/index.js",
     "./error": "./dist/error.js",
     "./types": "./dist/types.js",
-    "./constants": "./dist/constants.js",
-    "./browser": "./dist/browser.js"
+    "./constants": "./dist/constants.js"
   },
   "scripts": {
     "build": "tsc --build",

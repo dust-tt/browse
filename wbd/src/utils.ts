@@ -1,70 +1,72 @@
 import { err, ok, Result } from "@browse/common/error";
 import { Cookie, InteractResult, NetworkEvent } from "@browse/common/types";
-import { Page, Stagehand, NetworkMessage } from "@anonx3247/stagehand";
+import { Page, Stagehand } from "@browserbasehq/stagehand";
 
-export function safeStartNetworkRecord(
+export async function safeStartNetworkRecord(
   page: Page,
   events: NetworkEvent[],
-): Result<[Page, (networkMessage: NetworkMessage) => void]> {
+): Promise<Result<void>> {
   try {
-    const listener = (networkMessage: NetworkMessage) => {
-      console.log(networkMessage);
-      switch (networkMessage.type()) {
-        case "request":
-          events.push({
-            type: "request",
-            requestId: networkMessage.requestId(),
-            timestamp: networkMessage.timestamp(),
-            options: {
-              url: networkMessage.url(),
-              method: networkMessage.method() ?? "GET",
-              headers: networkMessage.requestHeaders()!,
-              body: networkMessage.postData(),
-            },
-          });
-          break;
-        case "response":
-          events.push({
-            type: "response",
-            requestId: networkMessage.requestId(),
-            timestamp: networkMessage.timestamp(),
-            options: {
-              url: networkMessage.url(),
-              status: networkMessage.status()!,
-              headers: networkMessage.responseHeaders()!,
-              body: networkMessage.postData(),
-            },
-          });
-          break;
-      }
-    };
-    const pg = page.on("network", listener);
-    return ok([pg, listener]);
+    const cdpSession = await (page as any).context().newCDPSession(page);
+
+    (page as any).__cdpSession = cdpSession;
+
+    cdpSession.on("Network.requestWillBeSent", (evt: any) => {
+      events.push({
+        type: "request",
+        requestId: evt.requestId,
+        timestamp: Date.now(),
+        options: {
+          url: evt.request.url,
+          method: evt.request.method ?? "GET",
+          headers: evt.request.headers ?? {},
+          body: evt.request.postData,
+        },
+      });
+    });
+
+    cdpSession.on("Network.responseReceived", (evt: any) => {
+      events.push({
+        type: "response",
+        requestId: evt.requestId,
+        timestamp: Date.now(),
+        options: {
+          url: evt.response.url,
+          status: evt.response.status,
+          headers: evt.response.headers ?? {},
+          body: undefined,
+        },
+      });
+    });
+
+    await cdpSession.send("Network.enable");
+    return ok(undefined);
   } catch (e: any) {
-    return err(e);
+    return err(`Failed to start network recording: ${e?.message ?? String(e)}`);
   }
 }
 
-export function safeStopNetworkRecord(
+export async function safeStopNetworkRecord(
   page: Page,
-  listener?: (networkMessage: NetworkMessage) => void,
-): Result<Page> {
+): Promise<Result<void>> {
   try {
-    const pg = page.off("network", listener ?? ((_networkMessage) => { }));
-    return ok(pg);
+    const cdpSession = (page as any).__cdpSession;
+    if (cdpSession) {
+      await cdpSession.send("Network.disable");
+      await cdpSession.detach();
+      delete (page as any).__cdpSession;
+    }
+    return ok(undefined);
   } catch (e: any) {
-    return err(e);
+    return err(`Failed to stop network recording: ${e?.message ?? String(e)}`);
   }
 }
 
 export async function safeGoto(page: Page, url: string): Promise<Result<Page>> {
   try {
-    const res = await page.goto(url);
-    if (!res || !res.ok()) {
-      return err(`Failed to navigate to ${url}`);
-    }
+    await page.goto(url);
   } catch (e: any) {
-    return err(e);
+    return err(`Failed to navigate to ${url}: ${e?.message ?? String(e)}`);
   }
   return ok(page);
 }
@@ -89,7 +91,7 @@ export async function safeAddCookies(
     // let the cookies take effect
     return ok(undefined);
   } catch (e: any) {
-    return err(e);
+    return err(`Failed to add cookies: ${e?.message ?? String(e)}`);
   }
 }
 
@@ -98,7 +100,7 @@ export async function safeContent(page: Page): Promise<Result<string>> {
     const content = await page.locator("body").innerHtml();
     return ok(content);
   } catch (e: any) {
-    return err(e);
+    return err(`Failed to get page content: ${e?.message ?? String(e)}`);
   }
 }
 
@@ -111,7 +113,7 @@ export async function safeNewPage(
     const res = await safeGoto(page, url);
     return res;
   } catch (e: any) {
-    return err(e);
+    return err(`Failed to create new page for ${url}: ${e?.message ?? String(e)}`);
   }
 }
 
@@ -119,7 +121,7 @@ export async function safeClose(page: Page): Promise<Result<void>> {
   try {
     await page.close();
   } catch (e: any) {
-    return err(e);
+    return err(`Failed to close page: ${e?.message ?? String(e)}`);
   }
   return ok(undefined);
 }
@@ -133,10 +135,19 @@ export async function safeInteract(
     const res = await stagehand.act(instructions, { page });
 
     if (!res.success) {
-      return err(`Failed to interact with ${instructions}`);
+      const details = [
+        `Failed to interact: ${instructions}`,
+        res.message ? `message: ${res.message}` : null,
+        res.actionDescription ? `action: ${res.actionDescription}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      return err(details);
     }
     return ok({ description: res.actionDescription, url: page.url() });
   } catch (e: any) {
-    return err(e);
+    const message = e?.message ?? String(e);
+    const details = `Failed to interact: ${instructions}\n${message}`;
+    return err(details);
   }
 }

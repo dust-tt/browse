@@ -15,7 +15,7 @@ import {
   isTabInput,
 } from "./types";
 import { ServerSocket } from "./socket";
-import { NetworkMessage, Page, Stagehand } from "@anonx3247/stagehand";
+import { Page, Stagehand } from "@browserbasehq/stagehand";
 import {
   safeAddCookies,
   safeClose,
@@ -27,8 +27,6 @@ import {
   safeStopNetworkRecord,
 } from "./utils";
 import { SESSION_DIR } from "@browse/common/constants";
-import { Browser, getBrowserFromEnv } from "@browse/common/browser";
-import { startLightpanda, stopLightpanda, getLightpandaCdpUrl } from "./lightpanda";
 import fs from "fs";
 import path from "path";
 import { convert } from "html-to-markdown-node";
@@ -42,47 +40,47 @@ export class Session {
   public currentTab?: string;
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
-  private browser: Browser;
+  private cdpUrl?: string;
   private events: NetworkEvent[] = [];
-  private networkListener?: (networkMessage: NetworkMessage) => void;
+  private recording: boolean = false;
 
   private constructor(
     public sessionName: string = "default",
     debug: boolean = false,
-    browser: Browser = "chrome",
+    cdpUrl?: string,
   ) {
     this.startTime = new Date();
     this.socket = new ServerSocket(sessionName);
-    this.browser = browser;
+    this.cdpUrl = cdpUrl;
     const dataDir = path.join(SESSION_DIR, sessionName, "data");
     fs.mkdirSync(dataDir, { recursive: true });
 
-    if (browser === "lightpanda") {
-      // Connect to Lightpanda via CDP
-      this.stagehand = new Stagehand({
-        env: "LOCAL",
-        localBrowserLaunchOptions: {
-          cdpUrl: getLightpandaCdpUrl(),
-          headless: true,
-        } as any,
-      });
+    const stagehandOpts: any = {
+      env: "LOCAL" as const,
+      model: "anthropic/claude-sonnet-4-6",
+      verbose: 0,
+    };
+
+    if (cdpUrl) {
+      stagehandOpts.localBrowserLaunchOptions = {
+        cdpUrl,
+        headless: true,
+      };
     } else {
-      // Launch Chrome
-      this.stagehand = new Stagehand({
-        env: "LOCAL",
-        localBrowserLaunchOptions: {
-          headless: !debug,
-          userDataDir: dataDir,
-          args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-          ],
-        },
-      });
+      stagehandOpts.localBrowserLaunchOptions = {
+        headless: !debug,
+        userDataDir: dataDir,
+        args: [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+          "--disable-gpu",
+        ],
+      };
     }
-    console.log(`Session initialized with ${browser} browser`);
+
+    this.stagehand = new Stagehand(stagehandOpts);
+    console.log(`Session initialized${cdpUrl ? ` with CDP URL: ${cdpUrl}` : " with Chrome"}`);
   }
 
   static async call(
@@ -153,33 +151,33 @@ export class Session {
     }
   }
 
-  static startNetworkRecord(): Result<void> {
+  static async startNetworkRecord(): Promise<Result<void>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
     const page = Session.instance.pages[Session.instance.currentTab];
     Session.instance.events = [];
-    const res = safeStartNetworkRecord(page, Session.instance.events);
+    const res = await safeStartNetworkRecord(page, Session.instance.events);
     if (res.isErr()) {
       return res;
     }
-    const [pg, listener] = res.value;
-    Session.instance.pages[Session.instance.currentTab] = pg;
-    Session.instance.networkListener = listener;
+    Session.instance.recording = true;
     return ok(undefined);
   }
 
-  static stopNetworkRecord(): Result<NetworkEvent[]> {
+  static async stopNetworkRecord(): Promise<Result<NetworkEvent[]>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
+    if (!Session.instance.recording) {
+      return err("No active network recording");
+    }
     const page = Session.instance.pages[Session.instance.currentTab];
-    const res = safeStopNetworkRecord(page, Session.instance.networkListener);
+    const res = await safeStopNetworkRecord(page);
     if (res.isErr()) {
       return res;
     }
-    Session.instance.pages[Session.instance.currentTab] = res.value;
-    console.log("SIZE:", Session.instance.events.length);
+    Session.instance.recording = false;
     return ok(Session.instance.events);
   }
 
@@ -192,24 +190,17 @@ export class Session {
   static async initialize(
     sessionName: string = "default",
     debug: boolean = false,
-    browser?: Browser,
   ) {
-    const effectiveBrowser = browser ?? getBrowserFromEnv();
+    const cdpUrl = process.env.BROWSE_CDP_URL;
 
     if (!Session.instance || Session.instance.sessionName !== sessionName) {
-      if (effectiveBrowser === "lightpanda") {
-        await startLightpanda();
-      }
-      Session.instance = new Session(sessionName, debug, effectiveBrowser);
+      Session.instance = new Session(sessionName, debug, cdpUrl);
       await Session.instance.stagehand.init();
       Session.instance.socket.listen();
     }
   }
 
   static deleteSession() {
-    if (Session.instance?.browser === "lightpanda") {
-      stopLightpanda();
-    }
     process.exit(0);
   }
 
@@ -313,7 +304,13 @@ export class Session {
         offset,
       },
     });
-    const text = html ? res.value : convert(res.value);
+    // Strip SVG elements and data URIs to reduce noise in output.
+    const cleaned = res.value.replace(/<svg[\s\S]*?<\/svg>/gi, "");
+    let text = html ? cleaned : convert(cleaned);
+    if (!html) {
+      // Remove any remaining base64 SVG image references in markdown.
+      text = text.replace(/!\[[^\]]*\]\(data:image\/svg\+xml[^)]*\)/g, "");
+    }
     return ok(text.slice(offset, 8196 + offset));
   }
 

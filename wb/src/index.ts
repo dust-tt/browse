@@ -58,15 +58,17 @@ sessionCmd
       session ?? "default",
       options.debug,
     );
-    handleResult(res, false);
-    const content = (await readFile(options.cookies)).toString();
-    const cookies = JSON.parse(content);
-    if (!Array.isArray(cookies)) {
-      console.log("Invalid cookies file");
-      process.exit(1);
+    handleResult(res, !options.cookies);
+    if (options.cookies) {
+      const content = (await readFile(options.cookies)).toString();
+      const cookies = JSON.parse(content);
+      if (!Array.isArray(cookies)) {
+        console.log("Invalid cookies file");
+        process.exit(1);
+      }
+      res = await BrowserController.addCookies(cookies);
+      handleResult(res);
     }
-    res = await BrowserController.addCookies(cookies);
-    handleResult(res);
   });
 
 sessionCmd
@@ -94,10 +96,10 @@ program
   .addOption(sessionOpt)
   .addOption(dbgOpt)
   .option("-h, --html", "Dump as HTML")
-  .option("-o, --offset <offset>", "Offset to start dumping from")
+  .option("-o, --offset <offset>", "Offset to start dumping from", parseInt)
   .action(async (options) => {
     await init(options);
-    const res = await BrowserController.dump(options.html, options.offset);
+    const res = await BrowserController.dump(options.html, options.offset ?? 0);
     handleResult(res);
   });
 
@@ -132,14 +134,18 @@ const networkCmd = program
   .addOption(sessionOpt)
   .addOption(dbgOpt)
   .hook("preAction", async (cmd) => {
-    const options = cmd.options;
-    await init(options);
+    await init(cmd.opts());
   });
 
 networkCmd
   .command("start")
   .description("Start recording network events")
-  .action(async (options) => {
+  .action(async () => {
+    const tab = await BrowserController.getCurrentTab();
+    if (tab.isErr()) {
+      console.error("No current tab set. Create a tab first with: wb tab new <name> <url>");
+      process.exit(1);
+    }
     const res = await BrowserController.startNetworkRecord();
     handleResult(res);
   });
@@ -149,6 +155,11 @@ networkCmd
   .description("Stop recording network events")
   .option("-o, --output <file>", "Output file", "network.json")
   .action(async (options) => {
+    const tab = await BrowserController.getCurrentTab();
+    if (tab.isErr()) {
+      console.error("No current tab set. Create a tab first with: wb tab new <name> <url>");
+      process.exit(1);
+    }
     const res = await BrowserController.stopNetworkRecord();
     const content = handleResult(res, false);
     await writeFile(options.output, JSON.stringify(content, null, 2));
@@ -162,8 +173,7 @@ const tabCmd = program
   .addOption(sessionOpt)
   .addOption(dbgOpt)
   .hook("preAction", async (cmd) => {
-    const options = cmd.options;
-    await init(options);
+    await init(cmd.opts());
   });
 
 tabCmd
