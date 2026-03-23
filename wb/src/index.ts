@@ -211,7 +211,13 @@ tabCmd
   .description("List all tabs")
   .action(async () => {
     const res = await BrowserController.listTabs();
-    handleResult(res);
+    const tabs = handleResult(res, false);
+    for (const tab of tabs as any[]) {
+      const label = tab.current ? `tab: ${tab.tabName} [current]` : `tab: ${tab.tabName}`;
+      console.log(label);
+      console.log(`  ${tab.url}`);
+    }
+    process.exit(0);
   });
 
 tabCmd
