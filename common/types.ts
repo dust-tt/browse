@@ -37,15 +37,15 @@ export type Go = {
   };
 };
 
-export type Interact = {
-  type: "interact";
+export type Act = {
+  type: "act";
   timestamp: Date;
   options: {
     instructions: string;
   };
 };
 
-export type InteractResult = {
+export type ActResult = {
   action: string;
   url: string;
 };
@@ -75,7 +75,7 @@ export function isObserveAction(action: any): action is ObserveAction {
   );
 }
 
-export function isInteractResult(result: any): result is InteractResult {
+export function isActResult(result: any): result is ActResult {
   return (
     typeof result === "object" &&
     "action" in result &&
@@ -86,7 +86,7 @@ export function isInteractResult(result: any): result is InteractResult {
 }
 
 export interface Action {
-  type: (Dump | Go | Interact | Observe)["type"];
+  type: (Dump | Go | Act | Observe)["type"];
   timestamp: Date;
   options: Record<string, any>;
 }
@@ -129,7 +129,7 @@ export const SESSION_METHODS = [
   "closeTab",
   "dump",
   "go",
-  "interact",
+  "act",
   "observe",
   "deleteSession",
   "startNetworkRecord",

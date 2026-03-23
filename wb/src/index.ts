@@ -116,14 +116,14 @@ program
   });
 
 program
-  .command("interact")
-  .description("Interact with the current tab")
-  .argument("<instructions>", "Instructions to interact with")
+  .command("act")
+  .description("Perform an action on the current tab")
+  .argument("<instructions>", "Instructions for the action to perform")
   .addOption(sessionOpt)
   .addOption(dbgOpt)
   .action(async (instructions, options) => {
     await init(options);
-    const res = await BrowserController.interact(instructions);
+    const res = await BrowserController.act(instructions);
     handleResult(res);
   });
 

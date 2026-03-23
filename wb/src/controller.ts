@@ -2,8 +2,8 @@ import { err, ok, Result } from "@browse/common/error";
 import { ClientSocket } from "./socket";
 import {
   Cookie,
-  InteractResult,
-  isInteractResult,
+  ActResult,
+  isActResult,
   isNamedTab,
   isNetworkEvent,
   isObserveAction,
@@ -228,14 +228,14 @@ export class BrowserController {
     }
   }
 
-  static async interact(instructions: string): Promise<Result<InteractResult>> {
-    const res = await BrowserController.send("interact", {
+  static async act(instructions: string): Promise<Result<ActResult>> {
+    const res = await BrowserController.send("act", {
       instructions,
     });
     if (res.isErr()) {
       return res;
-    } else if (!isInteractResult(res.value)) {
-      return err(`Got non-interact response: ${JSON.stringify(res)}`);
+    } else if (!isActResult(res.value)) {
+      return err(`Got non-act response: ${JSON.stringify(res)}`);
     } else {
       return ok(res.value);
     }

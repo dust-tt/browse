@@ -1,6 +1,6 @@
 import {
   Cookie,
-  InteractResult,
+  ActResult,
   isCookieInput,
   isSessionMethod,
   NetworkEvent,
@@ -11,7 +11,7 @@ import { err, ok, Result } from "@browse/common/error";
 import {
   isDumpInput,
   isGoInput,
-  isInteractInput,
+  isActInput,
   isNewTabInput,
   isObserveInput,
   isTabInput,
@@ -23,7 +23,7 @@ import {
   safeClose,
   safeContent,
   safeGoto,
-  safeInteract,
+  safeAct,
   safeNewPage,
   safeObserve,
   safeStartNetworkRecord,
@@ -142,9 +142,9 @@ export class Session {
         } else {
           return err("Invalid parameters");
         }
-      case "interact":
-        if (isInteractInput(params)) {
-          return Session.interact(params.instructions);
+      case "act":
+        if (isActInput(params)) {
+          return Session.act(params.instructions);
         } else {
           return err("Invalid parameters");
         }
@@ -347,12 +347,12 @@ export class Session {
     return ok(undefined);
   }
 
-  static async interact(instructions: string): Promise<Result<InteractResult>> {
+  static async act(instructions: string): Promise<Result<ActResult>> {
     if (!Session.instance.currentTab) {
       return err("No current tab set");
     }
     const page = Session.instance.pages[Session.instance.currentTab];
-    const res = await safeInteract(
+    const res = await safeAct(
       page,
       Session.instance.stagehand,
       instructions,
@@ -361,13 +361,13 @@ export class Session {
       return res;
     }
     Session.instance.tabs[Session.instance.currentTab].actions.push({
-      type: "interact",
+      type: "act",
       timestamp: new Date(),
       options: {
         instructions,
       },
     });
-    // The interaction may have changed the page url (e.g. clicking a link)
+    // The action may have changed the page url (e.g. clicking a link)
     Session.instance.tabs[Session.instance.currentTab].url = page.url();
     return ok(res.value);
   }

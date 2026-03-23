@@ -1,5 +1,5 @@
 import { err, ok, Result } from "@browse/common/error";
-import { Cookie, InteractResult, NetworkEvent, ObserveAction } from "@browse/common/types";
+import { Cookie, ActResult, NetworkEvent, ObserveAction } from "@browse/common/types";
 import { Page, Stagehand } from "@browserbasehq/stagehand";
 
 export async function safeStartNetworkRecord(
@@ -126,11 +126,11 @@ export async function safeClose(page: Page): Promise<Result<void>> {
   return ok(undefined);
 }
 
-export async function safeInteract(
+export async function safeAct(
   page: Page,
   stagehand: Stagehand,
   instructions: string,
-): Promise<Result<InteractResult>> {
+): Promise<Result<ActResult>> {
   try {
     const res = await stagehand.act(instructions, { page });
 
