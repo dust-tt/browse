@@ -137,33 +137,37 @@ export async function safeAct(
   instructions: string,
 ): Promise<Result<ActResult>> {
   try {
+    // Primary: stagehand's instruction-based act.
     const res = await stagehand.act(instructions, { page });
-
     if (res.success) {
       return ok({ action: res.actionDescription, url: page.url() });
     }
 
-    // Fallback: use observe to find the element, then act on it directly.
+    // Fallback: observe to find the element, then act deterministically.
+    // Observe can honestly return [] (no hallucination) and when it finds
+    // elements, act executes via direct XPath (no LLM).
     const observed = await stagehand.observe(instructions, { page });
     if (observed.length > 0) {
       const fallback = await stagehand.act(observed[0], { page });
       if (fallback.success) {
         return ok({ action: fallback.actionDescription, url: page.url() });
       }
+      return err(
+        `Failed to interact: ${instructions}\n` +
+          `act: ${res.message ?? "no action found"}\n` +
+          `observe found ${observed.length} element(s): ${observed.map((a) => `[${a.method}] ${a.description}`).join(", ")}\n` +
+          `observe+act: ${fallback.message ?? "action failed"}`,
+      );
     }
 
-    const details = [
-      `Failed to interact: ${instructions}`,
-      res.message ? `message: ${res.message}` : null,
-      res.actionDescription ? `action: ${res.actionDescription}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    return err(details);
+    return err(
+      `Failed to interact: ${instructions}\n` +
+        `act: ${res.message ?? "no action found"}\n` +
+        `observe: no matching elements found`,
+    );
   } catch (e: any) {
     const message = e?.message ?? String(e);
-    const details = `Failed to interact: ${instructions}\n${message}`;
-    return err(details);
+    return err(`Failed to interact: ${instructions}\n${message}`);
   }
 }
 

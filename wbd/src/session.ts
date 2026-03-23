@@ -57,7 +57,7 @@ export class Session {
 
     const stagehandOpts: any = {
       env: "LOCAL" as const,
-      model: "anthropic/claude-sonnet-4-6",
+      // model: "anthropic/claude-sonnet-4-6",
       verbose: 0,
     };
 
