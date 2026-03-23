@@ -1,8 +1,8 @@
 #!/usr/bin/env node
+import { readFile, writeFile } from "node:fs/promises";
+import { prettyString, type Result } from "@browse/common/error";
 import { Command, Option } from "commander";
 import { BrowserController } from "./controller";
-import { prettyString, type Result } from "@browse/common/error";
-import { readFile, writeFile } from "node:fs/promises";
 
 const program = new Command();
 

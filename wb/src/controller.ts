@@ -1,8 +1,10 @@
+import fs from "node:fs";
+import path from "node:path";
+import { SESSION_DIR } from "@browse/common/constants";
 import { err, ok, type Result } from "@browse/common/error";
-import { ClientSocket } from "./socket";
 import {
-  type Cookie,
   type ActResult,
+  type Cookie,
   isActResult,
   isNamedTab,
   isNetworkEvent,
@@ -13,9 +15,7 @@ import {
   type SessionMethod,
   type Tab,
 } from "@browse/common/types";
-import { SESSION_DIR } from "@browse/common/constants";
-import fs from "node:fs";
-import path from "node:path";
+import { ClientSocket } from "./socket";
 
 export class BrowserController {
   private socket: ClientSocket;

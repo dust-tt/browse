@@ -1,4 +1,5 @@
 #!/usr/bin/env npx tsx
+
 /**
  * Browser comparison benchmark: Chrome vs Lightpanda
  *
@@ -9,8 +10,8 @@
  * - Lightpanda installed and available in PATH
  */
 
+import { type ChildProcess, execSync, spawn } from "node:child_process";
 import puppeteer from "puppeteer-core";
-import { spawn, type ChildProcess, execSync } from "node:child_process";
 
 const LIGHTPANDA_PORT = 9222;
 const ITERATIONS = 5;

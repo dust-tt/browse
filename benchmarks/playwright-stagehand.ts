@@ -1,5 +1,5 @@
-import { Stagehand, type Page } from "@browserbasehq/stagehand";
-import { chromium, type Browser } from "playwright";
+import { type Page, Stagehand } from "@browserbasehq/stagehand";
+import { type Browser, chromium } from "playwright";
 
 interface BenchmarkResult {
   operation: string;

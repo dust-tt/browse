@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "@browse/common/error";
 import type {
-  Cookie,
   ActResult,
+  Cookie,
   NetworkEvent,
   ObserveAction,
 } from "@browse/common/types";

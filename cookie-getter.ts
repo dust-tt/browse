@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { chromium } from "playwright-core";
-import { Command } from "commander";
 import { writeFile } from "node:fs/promises";
+import { Command } from "commander";
+import { chromium } from "playwright-core";
 
 const program = new Command("cookie-getter")
   .option("-c, --cookies", "File to store cookies to", "cookies.json")

@@ -1,10 +1,10 @@
-import net from "node:net";
 import fs from "node:fs";
-import { SESSION_DIR } from "@browse/common/constants";
+import net from "node:net";
 import path from "node:path";
-import { Session } from "./session";
-import { resultToResponse } from "@browse/common/types";
+import { SESSION_DIR } from "@browse/common/constants";
 import { prettyString } from "@browse/common/error";
+import { resultToResponse } from "@browse/common/types";
+import { Session } from "./session";
 
 export class ServerSocket {
   private server: net.Server;

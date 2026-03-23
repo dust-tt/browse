@@ -1,38 +1,38 @@
+import fs from "node:fs";
+import path from "node:path";
+import { SESSION_DIR } from "@browse/common/constants";
+import { err, ok, type Result } from "@browse/common/error";
 import {
+  type ActResult,
+  type Cookie,
   isCookieInput,
   isSessionMethod,
-  type Cookie,
-  type ActResult,
   type NetworkEvent,
   type ObserveAction,
   type Tab,
 } from "@browse/common/types";
-import { err, ok, type Result } from "@browse/common/error";
+import { type Page, Stagehand } from "@browserbasehq/stagehand";
+import { convert } from "html-to-markdown-node";
+import { ServerSocket } from "./socket";
 import {
+  isActInput,
   isDumpInput,
   isGoInput,
-  isActInput,
   isNewTabInput,
   isObserveInput,
   isTabInput,
 } from "./types";
-import { ServerSocket } from "./socket";
-import { Stagehand, type Page } from "@browserbasehq/stagehand";
 import {
+  safeAct,
   safeAddCookies,
   safeClose,
   safeContent,
   safeGoto,
-  safeAct,
   safeNewPage,
   safeObserve,
   safeStartNetworkRecord,
   safeStopNetworkRecord,
 } from "./utils";
-import { SESSION_DIR } from "@browse/common/constants";
-import fs from "node:fs";
-import path from "node:path";
-import { convert } from "html-to-markdown-node";
 
 export class Session {
   private static instance: Session;

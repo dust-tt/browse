@@ -1,9 +1,9 @@
-import net from "node:net";
-import fs from "node:fs";
-import { err, ok, type Result } from "@browse/common/error";
-import { SESSION_DIR } from "@browse/common/constants";
-import path from "node:path";
 import { spawn } from "node:child_process";
+import fs from "node:fs";
+import net from "node:net";
+import path from "node:path";
+import { SESSION_DIR } from "@browse/common/constants";
+import { err, ok, type Result } from "@browse/common/error";
 import {
   isResponse,
   responseToResult,
