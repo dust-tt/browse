@@ -36,6 +36,10 @@ const dbgOpt = new Option(
   "Enable debug mode (makes the browser not headless)",
 );
 
+// ===============
+// SESSION
+// ===============
+
 const sessionCmd = program.command("session");
 
 sessionCmd
@@ -78,9 +82,13 @@ sessionCmd
     handleResult(res);
   });
 
+// ===============
+// RUNTIME
+// ===============
+
 program
   .command("runtime")
-  .description("Get the runtime of the current tab")
+  .description("Get the runtime of the current session")
   .addOption(sessionOpt)
   .addOption(dbgOpt)
   .action(async (options) => {
@@ -89,157 +97,174 @@ program
     handleResult(res);
   });
 
-program
-  .command("dump")
-  .description("Dump the current tab (max 8196 characters)")
-  .addOption(sessionOpt)
-  .addOption(dbgOpt)
-  .option("-h, --html", "Dump as HTML")
-  .option("-o, --offset <offset>", "Offset to start dumping from", parseInt)
-  .action(async (options) => {
-    await init(options);
-    const res = await BrowserController.dump(options.html, options.offset ?? 0);
-    handleResult(res);
-  });
+// ===============
+// TAB
+// ===============
 
-program
-  .command("go")
-  .description("Go to a URL")
-  .argument("<url>", "URL to navigate to")
-  .addOption(sessionOpt)
-  .addOption(dbgOpt)
-  .action(async (url, options) => {
-    await init(options);
-    const res = await BrowserController.go(url);
-    handleResult(res);
-  });
-
-program
-  .command("act")
-  .description("Perform an action on the current tab")
-  .argument("<instructions>", "Instructions for the action to perform")
-  .addOption(sessionOpt)
-  .addOption(dbgOpt)
-  .action(async (instructions, options) => {
-    await init(options);
-    const res = await BrowserController.act(instructions);
-    handleResult(res);
-  });
-
-program
-  .command("observe")
-  .description("Observe available actions on the current tab")
-  .argument("<instructions>", "Instructions describing what to observe")
-  .addOption(sessionOpt)
-  .addOption(dbgOpt)
-  .action(async (instructions, options) => {
-    await init(options);
-    const res = await BrowserController.observe(instructions);
-    handleResult(res);
-  });
-
-const networkCmd = program
-  .command("network")
-  .description("Record network events")
-  .addOption(sessionOpt)
-  .addOption(dbgOpt)
-  .hook("preAction", async (cmd) => {
-    await init(cmd.opts());
-  });
-
-networkCmd
-  .command("start")
-  .description("Start recording network events")
-  .action(async () => {
-    const tab = await BrowserController.getCurrentTab();
-    if (tab.isErr()) {
-      console.error(
-        "No current tab set. Create a tab first with: wb tab new <name> <url>",
-      );
-      process.exit(1);
+function parseFlags(args: string[]): {
+  flags: Record<string, string | true>;
+  rest: string[];
+} {
+  const flags: Record<string, string | true> = {};
+  const rest: string[] = [];
+  let i = 0;
+  while (i < args.length) {
+    const arg = args[i];
+    if (arg.startsWith("-")) {
+      const key = arg.replace(/^-+/, "");
+      if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
+        flags[key] = args[i + 1];
+        i += 2;
+      } else {
+        flags[key] = true;
+        i += 1;
+      }
+    } else {
+      rest.push(arg);
+      i += 1;
     }
-    const res = await BrowserController.startNetworkRecord();
-    handleResult(res);
-  });
+  }
+  return { flags, rest };
+}
 
-networkCmd
-  .command("stop")
-  .description("Stop recording network events")
-  .option("-o, --output <file>", "Output file", "network.json")
-  .action(async (options) => {
-    const tab = await BrowserController.getCurrentTab();
-    if (tab.isErr()) {
-      console.error(
-        "No current tab set. Create a tab first with: wb tab new <name> <url>",
-      );
-      process.exit(1);
-    }
-    const res = await BrowserController.stopNetworkRecord();
-    const content = handleResult(res, false);
-    await writeFile(options.output, JSON.stringify(content, null, 2));
-    console.log(`Saved network activity to ${options.output}`);
-    process.exit(0);
-  });
-
-const tabCmd = program
+program
   .command("tab")
-  .description("Manage browser tabs")
+  .description("Manage and interact with browser tabs")
   .addOption(sessionOpt)
   .addOption(dbgOpt)
-  .hook("preAction", async (cmd) => {
-    await init(cmd.opts());
-  });
-
-tabCmd
-  .command("new")
-  .description("Create a new tab")
-  .argument("<name>", "Name of the tab")
-  .argument("<url>", "URL to navigate to")
-  .action(async (name, url) => {
-    const res = await BrowserController.newTab(name, url);
-    handleResult(res);
-  });
-
-tabCmd
-  .command("close")
-  .description("Close a tab")
-  .argument("<name>", "Name of the tab")
-  .action(async (name) => {
-    const res = await BrowserController.closeTab(name);
-    handleResult(res);
-  });
-
-tabCmd
-  .command("list")
-  .description("List all tabs")
-  .action(async () => {
-    const res = await BrowserController.listTabs();
-    const tabs = handleResult(res, false);
-    for (const tab of tabs as any[]) {
-      const label = tab.current
-        ? `tab: ${tab.tabName} [current]`
-        : `tab: ${tab.tabName}`;
-      console.log(label);
-      console.log(`  ${tab.url}`);
+  .allowUnknownOption()
+  .allowExcessArguments()
+  .argument(
+    "<nameOrAction>",
+    "Tab name or management action (list, new, close)",
+  )
+  .argument("[args...]", "Action and arguments")
+  .action(async (nameOrAction: string, args: string[], options: any) => {
+    // ---- Management commands ----
+    if (nameOrAction === "list") {
+      await init(options);
+      const res = await BrowserController.listTabs();
+      const tabs = handleResult(res, false);
+      for (const tab of tabs as any[]) {
+        console.log(`tab: ${tab.tabName}`);
+        console.log(`  ${tab.url}`);
+      }
+      process.exit(0);
     }
-    process.exit(0);
-  });
 
-tabCmd
-  .command("current")
-  .description("Get the current tab")
-  .action(async () => {
-    const res = await BrowserController.getCurrentTab();
-    handleResult(res);
-  });
+    if (nameOrAction === "new") {
+      if (args.length < 2) {
+        console.error("Usage: wb tab new <name> <url>");
+        process.exit(1);
+      }
+      await init(options);
+      const res = await BrowserController.newTab(args[0], args[1]);
+      handleResult(res);
+      return;
+    }
 
-tabCmd
-  .command("set-current")
-  .description("Set the current tab")
-  .argument("<name>", "Name of the tab")
-  .action(async (name) => {
-    const res = await BrowserController.setCurrentTab(name);
-    handleResult(res);
+    if (nameOrAction === "close") {
+      if (args.length < 1) {
+        console.error("Usage: wb tab close <name>");
+        process.exit(1);
+      }
+      await init(options);
+      const res = await BrowserController.closeTab(args[0]);
+      handleResult(res);
+      return;
+    }
+
+    // ---- Tab-specific commands: nameOrAction is the tab name ----
+    const tabName = nameOrAction;
+    if (args.length < 1) {
+      console.error(
+        `Usage: wb tab <name> <action>\nActions: go, dump, act, observe, network`,
+      );
+      process.exit(1);
+    }
+
+    const action = args[0];
+    const actionArgs = args.slice(1);
+
+    await init(options);
+
+    switch (action) {
+      case "go": {
+        if (actionArgs.length < 1) {
+          console.error("Usage: wb tab <name> go <url>");
+          process.exit(1);
+        }
+        const res = await BrowserController.go(tabName, actionArgs[0]);
+        handleResult(res);
+        break;
+      }
+
+      case "dump": {
+        const { flags } = parseFlags(actionArgs);
+        const html = "h" in flags || "html" in flags;
+        const offset = flags.o ?? flags.offset;
+        const res = await BrowserController.dump(
+          tabName,
+          html,
+          offset ? parseInt(String(offset), 10) : 0,
+        );
+        handleResult(res);
+        break;
+      }
+
+      case "act": {
+        if (actionArgs.length < 1) {
+          console.error("Usage: wb tab <name> act <instructions>");
+          process.exit(1);
+        }
+        const res = await BrowserController.act(tabName, actionArgs.join(" "));
+        handleResult(res);
+        break;
+      }
+
+      case "observe": {
+        if (actionArgs.length < 1) {
+          console.error("Usage: wb tab <name> observe <instructions>");
+          process.exit(1);
+        }
+        const res = await BrowserController.observe(
+          tabName,
+          actionArgs.join(" "),
+        );
+        handleResult(res);
+        break;
+      }
+
+      case "network": {
+        if (actionArgs.length < 1) {
+          console.error("Usage: wb tab <name> network <start|stop>");
+          process.exit(1);
+        }
+        const subAction = actionArgs[0];
+        if (subAction === "start") {
+          const res = await BrowserController.startNetworkRecord(tabName);
+          handleResult(res);
+        } else if (subAction === "stop") {
+          const { flags } = parseFlags(actionArgs.slice(1));
+          const output = String(flags.o ?? flags.output ?? "network.json");
+          const res = await BrowserController.stopNetworkRecord(tabName);
+          const content = handleResult(res, false);
+          await writeFile(output, JSON.stringify(content, null, 2));
+          console.log(`Saved network activity to ${output}`);
+          process.exit(0);
+        } else {
+          console.error("Usage: wb tab <name> network <start|stop>");
+          process.exit(1);
+        }
+        break;
+      }
+
+      default:
+        console.error(
+          `Unknown action: ${action}\nActions: go, dump, act, observe, network`,
+        );
+        process.exit(1);
+    }
   });
 
 program.parse();

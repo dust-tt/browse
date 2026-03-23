@@ -1,38 +1,38 @@
-import fs from "node:fs";
-import path from "node:path";
-import { SESSION_DIR } from "@browse/common/constants";
-import { err, ok, type Result } from "@browse/common/error";
 import {
-  type ActResult,
-  type Cookie,
   isCookieInput,
   isSessionMethod,
+  type Cookie,
+  type ActResult,
   type NetworkEvent,
   type ObserveAction,
   type Tab,
 } from "@browse/common/types";
-import { type Page, Stagehand } from "@browserbasehq/stagehand";
-import { convert } from "html-to-markdown-node";
-import { ServerSocket } from "./socket";
+import { err, ok, type Result } from "@browse/common/error";
 import {
-  isActInput,
   isDumpInput,
   isGoInput,
+  isActInput,
   isNewTabInput,
   isObserveInput,
   isTabInput,
 } from "./types";
+import { ServerSocket } from "./socket";
+import { Stagehand, type Page } from "@browserbasehq/stagehand";
 import {
-  safeAct,
   safeAddCookies,
   safeClose,
   safeContent,
   safeGoto,
+  safeAct,
   safeNewPage,
   safeObserve,
   safeStartNetworkRecord,
   safeStopNetworkRecord,
 } from "./utils";
+import { SESSION_DIR } from "@browse/common/constants";
+import fs from "node:fs";
+import path from "node:path";
+import { convert } from "html-to-markdown-node";
 
 export class Session {
   private static instance: Session;
@@ -40,12 +40,10 @@ export class Session {
   private startTime: Date;
   private tabs: Record<string, Tab> = {};
   private pages: Record<string, Page> = {};
-  public currentTab?: string;
   public data: Record<string, any> = {};
   private stagehand: Stagehand;
-  private cdpUrl?: string;
-  private events: NetworkEvent[] = [];
-  private recording: boolean = false;
+  private events: Record<string, NetworkEvent[]> = {};
+  private recording: Record<string, boolean> = {};
 
   private constructor(
     public sessionName: string = "default",
@@ -54,7 +52,6 @@ export class Session {
   ) {
     this.startTime = new Date();
     this.socket = new ServerSocket(sessionName);
-    this.cdpUrl = cdpUrl;
     const dataDir = path.join(SESSION_DIR, sessionName, "data");
     fs.mkdirSync(dataDir, { recursive: true });
 
@@ -64,7 +61,7 @@ export class Session {
       verbose: 0,
     };
 
-    if (this.cdpUrl) {
+    if (cdpUrl) {
       stagehandOpts.localBrowserLaunchOptions = {
         cdpUrl,
         headless: !debug,
@@ -88,6 +85,13 @@ export class Session {
     );
   }
 
+  private static getPage(tabName: string): Result<Page> {
+    if (!Session.hasTab(tabName)) {
+      return err(`Tab ${tabName} does not exist`);
+    }
+    return ok(Session.instance.pages[tabName]);
+  }
+
   static async call(
     method: unknown,
     params: unknown,
@@ -97,21 +101,21 @@ export class Session {
     }
     switch (method) {
       case "startNetworkRecord":
-        return Session.startNetworkRecord();
+        if (isTabInput(params)) {
+          return Session.startNetworkRecord(params.tabName);
+        } else {
+          return err("Invalid parameters");
+        }
       case "stopNetworkRecord":
-        return Session.stopNetworkRecord();
+        if (isTabInput(params)) {
+          return Session.stopNetworkRecord(params.tabName);
+        } else {
+          return err("Invalid parameters");
+        }
       case "runtimeSeconds":
         return Session.runtimeSeconds();
       case "listTabs":
         return Session.listTabs();
-      case "getCurrentTab":
-        return Session.getCurrentTab();
-      case "setCurrentTab":
-        if (isTabInput(params)) {
-          return Session.setCurrentTab(params.tabName);
-        } else {
-          return err("Invalid parameters");
-        }
       case "addCookies":
         if (isCookieInput(params)) {
           return await Session.addCookies(params.cookies);
@@ -132,27 +136,25 @@ export class Session {
         }
       case "dump":
         if (isDumpInput(params)) {
-          const res = await Session.dump(params.html, params.offset);
-          console.log(res);
-          return res;
+          return await Session.dump(params.tabName, params.html, params.offset);
         } else {
           return err("Invalid parameters");
         }
       case "go":
         if (isGoInput(params)) {
-          return await Session.go(params.url);
+          return await Session.go(params.tabName, params.url);
         } else {
           return err("Invalid parameters");
         }
       case "act":
         if (isActInput(params)) {
-          return Session.act(params.instructions);
+          return Session.act(params.tabName, params.instructions);
         } else {
           return err("Invalid parameters");
         }
       case "observe":
         if (isObserveInput(params)) {
-          return Session.observe(params.instructions);
+          return Session.observe(params.tabName, params.instructions);
         } else {
           return err("Invalid parameters");
         }
@@ -162,34 +164,31 @@ export class Session {
     }
   }
 
-  static async startNetworkRecord(): Promise<Result<void>> {
-    if (!Session.instance.currentTab) {
-      return err("No current tab set");
-    }
-    const page = Session.instance.pages[Session.instance.currentTab];
-    Session.instance.events = [];
-    const res = await safeStartNetworkRecord(page, Session.instance.events);
-    if (res.isErr()) {
-      return res;
-    }
-    Session.instance.recording = true;
+  static async startNetworkRecord(tabName: string): Promise<Result<void>> {
+    const pageRes = Session.getPage(tabName);
+    if (pageRes.isErr()) return pageRes;
+    Session.instance.events[tabName] = [];
+    const res = await safeStartNetworkRecord(
+      pageRes.value,
+      Session.instance.events[tabName],
+    );
+    if (res.isErr()) return res;
+    Session.instance.recording[tabName] = true;
     return ok(undefined);
   }
 
-  static async stopNetworkRecord(): Promise<Result<NetworkEvent[]>> {
-    if (!Session.instance.currentTab) {
-      return err("No current tab set");
-    }
-    if (!Session.instance.recording) {
+  static async stopNetworkRecord(
+    tabName: string,
+  ): Promise<Result<NetworkEvent[]>> {
+    const pageRes = Session.getPage(tabName);
+    if (pageRes.isErr()) return pageRes;
+    if (!Session.instance.recording[tabName]) {
       return err("No active network recording");
     }
-    const page = Session.instance.pages[Session.instance.currentTab];
-    const res = await safeStopNetworkRecord(page);
-    if (res.isErr()) {
-      return res;
-    }
-    Session.instance.recording = false;
-    return ok(Session.instance.events);
+    const res = await safeStopNetworkRecord(pageRes.value);
+    if (res.isErr()) return res;
+    Session.instance.recording[tabName] = false;
+    return ok(Session.instance.events[tabName]);
   }
 
   static runtimeSeconds(): Result<number> {
@@ -223,35 +222,13 @@ export class Session {
       : err(`Tab ${tabName} does not exist`);
   }
 
-  static listTabs(): Result<
-    { tabName: string; url: string; current: boolean }[]
-  > {
+  static listTabs(): Result<{ tabName: string; url: string }[]> {
     return ok(
       Object.entries(Session.instance.tabs).map(([tabName, tab]) => ({
         tabName,
         url: Session.instance.pages[tabName]?.url() ?? tab.url,
-        current: tabName === Session.instance.currentTab,
       })),
     );
-  }
-
-  static getCurrentTab(): Result<{ tabName: string } & Tab> {
-    if (!Session.instance.currentTab) {
-      return err("No current tab set");
-    }
-    const tab = Session.getTab(Session.instance.currentTab);
-    return tab.isErr()
-      ? tab
-      : ok({ tabName: Session.instance.currentTab, ...tab.value });
-  }
-
-  static setCurrentTab(tabName: string): Result<void> {
-    if (Session.hasTab(tabName)) {
-      Session.instance.currentTab = tabName;
-      return ok(undefined);
-    } else {
-      return err(`Tab ${tabName} does not exist`);
-    }
   }
 
   static async addCookies(cookies: Cookie[]): Promise<Result<void>> {
@@ -262,26 +239,20 @@ export class Session {
   static async newTab(tabName: string, url: string): Promise<Result<Tab>> {
     if (Session.hasTab(tabName)) {
       return err(`Tab ${tabName} already exists`);
-    } else {
-      const tab: Tab = {
-        url,
-        actions: [],
-        startTime: new Date(),
-      };
-
-      const pageRes = await safeNewPage(Session.instance.stagehand, url);
-      if (pageRes.isErr()) {
-        return pageRes;
-      }
-      Session.instance.pages[tabName] = pageRes.value;
-
-      if (Object.keys(Session.instance.tabs).length === 0) {
-        Session.instance.currentTab = tabName;
-      }
-
-      Session.instance.tabs[tabName] = tab;
-      return ok(tab);
     }
+    const tab: Tab = {
+      url,
+      actions: [],
+      startTime: new Date(),
+    };
+
+    const pageRes = await safeNewPage(Session.instance.stagehand, url);
+    if (pageRes.isErr()) {
+      return pageRes;
+    }
+    Session.instance.pages[tabName] = pageRes.value;
+    Session.instance.tabs[tabName] = tab;
+    return ok(tab);
   }
 
   static async closeTab(tabName: string): Promise<Result<void>> {
@@ -292,9 +263,8 @@ export class Session {
         return res;
       }
       delete Session.instance.pages[tabName];
-      if (Session.instance.currentTab === tabName) {
-        Session.instance.currentTab = undefined;
-      }
+      delete Session.instance.events[tabName];
+      delete Session.instance.recording[tabName];
       return ok(undefined);
     } else {
       return err(`Tab ${tabName} does not exist`);
@@ -302,24 +272,19 @@ export class Session {
   }
 
   static async dump(
+    tabName: string,
     html: boolean,
     offset: number = 0,
   ): Promise<Result<string>> {
-    if (!Session.instance.currentTab) {
-      return err("No current tab set");
-    }
-    const page = Session.instance.pages[Session.instance.currentTab];
+    const pageRes = Session.getPage(tabName);
+    if (pageRes.isErr()) return pageRes;
+    const page = pageRes.value;
     const res = await safeContent(page);
-    if (res.isErr()) {
-      return res;
-    }
-    Session.instance.tabs[Session.instance.currentTab].actions.push({
+    if (res.isErr()) return res;
+    Session.instance.tabs[tabName].actions.push({
       type: "dump",
       timestamp: new Date(),
-      options: {
-        html,
-        offset,
-      },
+      options: { html, offset },
     });
     // Strip SVG elements and data URIs to reduce noise in output.
     const cleaned = res.value.replace(/<svg[\s\S]*?<\/svg>/gi, "");
@@ -331,70 +296,60 @@ export class Session {
     return ok(text.slice(offset, 8196 + offset));
   }
 
-  static async go(url: string): Promise<Result<void>> {
-    if (!Session.instance.currentTab) {
-      return err("No current tab set");
-    }
-
-    let page = Session.instance.pages[Session.instance.currentTab];
-    const pageRes = await safeGoto(page, url);
-    if (pageRes.isErr()) {
-      return pageRes;
-    }
-    page = pageRes.value;
-    Session.instance.pages[Session.instance.currentTab] = page;
+  static async go(tabName: string, url: string): Promise<Result<void>> {
+    const pageRes = Session.getPage(tabName);
+    if (pageRes.isErr()) return pageRes;
+    let page = pageRes.value;
+    const gotoRes = await safeGoto(page, url);
+    if (gotoRes.isErr()) return gotoRes;
+    page = gotoRes.value;
+    Session.instance.pages[tabName] = page;
     // we use the page url as there may have been a redirection
-    Session.instance.tabs[Session.instance.currentTab].url = page.url();
-    Session.instance.tabs[Session.instance.currentTab].actions.push({
+    Session.instance.tabs[tabName].url = page.url();
+    Session.instance.tabs[tabName].actions.push({
       type: "go",
       timestamp: new Date(),
-      options: {
-        url,
-      },
+      options: { url },
     });
     return ok(undefined);
   }
 
-  static async act(instructions: string): Promise<Result<ActResult>> {
-    if (!Session.instance.currentTab) {
-      return err("No current tab set");
-    }
-    const page = Session.instance.pages[Session.instance.currentTab];
+  static async act(
+    tabName: string,
+    instructions: string,
+  ): Promise<Result<ActResult>> {
+    const pageRes = Session.getPage(tabName);
+    if (pageRes.isErr()) return pageRes;
+    const page = pageRes.value;
     const res = await safeAct(page, Session.instance.stagehand, instructions);
-    if (res.isErr()) {
-      return res;
-    }
-    Session.instance.tabs[Session.instance.currentTab].actions.push({
+    if (res.isErr()) return res;
+    Session.instance.tabs[tabName].actions.push({
       type: "act",
       timestamp: new Date(),
-      options: {
-        instructions,
-      },
+      options: { instructions },
     });
     // The action may have changed the page url (e.g. clicking a link)
-    Session.instance.tabs[Session.instance.currentTab].url = page.url();
+    Session.instance.tabs[tabName].url = page.url();
     return ok(res.value);
   }
 
-  static async observe(instructions: string): Promise<Result<ObserveAction[]>> {
-    if (!Session.instance.currentTab) {
-      return err("No current tab set");
-    }
-    const page = Session.instance.pages[Session.instance.currentTab];
+  static async observe(
+    tabName: string,
+    instructions: string,
+  ): Promise<Result<ObserveAction[]>> {
+    const pageRes = Session.getPage(tabName);
+    if (pageRes.isErr()) return pageRes;
+    const page = pageRes.value;
     const res = await safeObserve(
       page,
       Session.instance.stagehand,
       instructions,
     );
-    if (res.isErr()) {
-      return res;
-    }
-    Session.instance.tabs[Session.instance.currentTab].actions.push({
+    if (res.isErr()) return res;
+    Session.instance.tabs[tabName].actions.push({
       type: "observe",
       timestamp: new Date(),
-      options: {
-        instructions,
-      },
+      options: { instructions },
     });
     return ok(res.value);
   }

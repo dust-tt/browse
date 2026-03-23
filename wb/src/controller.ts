@@ -6,7 +6,6 @@ import {
   type ActResult,
   type Cookie,
   isActResult,
-  isNamedTab,
   isNetworkEvent,
   isObserveAction,
   isTab,
@@ -104,156 +103,111 @@ export class BrowserController {
     return res;
   }
 
-  static async startNetworkRecord(): Promise<Result<void>> {
-    const res = await BrowserController.send("startNetworkRecord");
-    if (res.isErr()) {
-      return res;
-    } else {
-      return ok(undefined);
-    }
+  static async startNetworkRecord(tabName: string): Promise<Result<void>> {
+    const res = await BrowserController.send("startNetworkRecord", { tabName });
+    if (res.isErr()) return res;
+    return ok(undefined);
   }
 
-  static async stopNetworkRecord(): Promise<Result<NetworkEvent[]>> {
-    const res = await BrowserController.send("stopNetworkRecord");
-    if (res.isErr()) {
-      return res;
-    } else if (
+  static async stopNetworkRecord(
+    tabName: string,
+  ): Promise<Result<NetworkEvent[]>> {
+    const res = await BrowserController.send("stopNetworkRecord", { tabName });
+    if (res.isErr()) return res;
+    if (
       !Array.isArray(res.value) ||
       res.value.some((v) => !isNetworkEvent(v))
     ) {
       return err(`Got non-array response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
     }
+    return ok(res.value);
   }
 
   static async runtimeSeconds(): Promise<Result<number>> {
     const res = await BrowserController.send("runtimeSeconds");
-    if (res.isErr()) {
-      return res;
-    } else if (typeof res.value !== "number") {
+    if (res.isErr()) return res;
+    if (typeof res.value !== "number") {
       return err(`Got non-number response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
     }
+    return ok(res.value);
   }
 
   static async listTabs(): Promise<Result<unknown[]>> {
     const res = await BrowserController.send("listTabs");
-    if (res.isErr()) {
-      return res;
-    } else if (!Array.isArray(res.value)) {
+    if (res.isErr()) return res;
+    if (!Array.isArray(res.value)) {
       return err(`Got non-array response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
     }
+    return ok(res.value);
   }
 
-  static async getCurrentTab(): Promise<Result<Tab & { tabName: string }>> {
-    const res = await BrowserController.send("getCurrentTab");
-    if (res.isErr()) {
-      return res;
-    }
-    if (!isNamedTab(res.value)) {
+  static async addCookies(cookies: Cookie[]): Promise<Result<void>> {
+    const res = await BrowserController.send("addCookies", { cookies });
+    if (res.isErr()) return res;
+    return ok(undefined);
+  }
+
+  static async newTab(tabName: string, url: string): Promise<Result<Tab>> {
+    const res = await BrowserController.send("newTab", { tabName, url });
+    if (res.isErr()) return res;
+    if (!isTab(res.value)) {
       return err(`Got non-tab response: ${JSON.stringify(res)}`);
     }
     return ok(res.value);
   }
 
-  static async setCurrentTab(tabName: string): Promise<Result<void>> {
-    const res = await BrowserController.send("setCurrentTab", {
-      tabName,
-    });
-    if (res.isErr()) {
-      return res;
-    } else {
-      return ok(undefined);
-    }
-  }
-
-  static async addCookies(cookies: Cookie[]): Promise<Result<void>> {
-    const res = await BrowserController.send("addCookies", { cookies });
-    if (res.isErr()) {
-      return res;
-    } else {
-      return ok(undefined);
-    }
-  }
-
-  static async newTab(tabName: string, url: string): Promise<Result<Tab>> {
-    const res = await BrowserController.send("newTab", {
-      tabName,
-      url,
-    });
-    if (res.isErr()) {
-      return res;
-    } else if (!isTab(res.value)) {
-      return err(`Got non-tab response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
-    }
-  }
-
   static async closeTab(tabName: string): Promise<Result<void>> {
-    const res = await BrowserController.send("closeTab", {
-      tabName,
-    });
-    if (res.isErr()) {
-      return res;
-    } else {
-      return ok(undefined);
-    }
+    const res = await BrowserController.send("closeTab", { tabName });
+    if (res.isErr()) return res;
+    return ok(undefined);
   }
 
   static async dump(
+    tabName: string,
     html: boolean = false,
     offset: number = 0,
   ): Promise<Result<string>> {
-    const res = await BrowserController.send("dump", { html, offset });
-    if (res.isErr()) {
-      return res;
-    } else if (typeof res.value !== "string") {
+    const res = await BrowserController.send("dump", { tabName, html, offset });
+    if (res.isErr()) return res;
+    if (typeof res.value !== "string") {
       return err(`Got non-string response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
     }
+    return ok(res.value);
   }
 
-  static async go(url: string): Promise<Result<void>> {
-    const res = await BrowserController.send("go", { url });
-    if (res.isErr()) {
-      return res;
-    } else {
-      return ok(undefined);
-    }
+  static async go(tabName: string, url: string): Promise<Result<void>> {
+    const res = await BrowserController.send("go", { tabName, url });
+    if (res.isErr()) return res;
+    return ok(undefined);
   }
 
-  static async act(instructions: string): Promise<Result<ActResult>> {
-    const res = await BrowserController.send("act", {
-      instructions,
-    });
-    if (res.isErr()) {
-      return res;
-    } else if (!isActResult(res.value)) {
+  static async act(
+    tabName: string,
+    instructions: string,
+  ): Promise<Result<ActResult>> {
+    const res = await BrowserController.send("act", { tabName, instructions });
+    if (res.isErr()) return res;
+    if (!isActResult(res.value)) {
       return err(`Got non-act response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
     }
+    return ok(res.value);
   }
 
-  static async observe(instructions: string): Promise<Result<ObserveAction[]>> {
+  static async observe(
+    tabName: string,
+    instructions: string,
+  ): Promise<Result<ObserveAction[]>> {
     const res = await BrowserController.send("observe", {
+      tabName,
       instructions,
     });
-    if (res.isErr()) {
-      return res;
-    } else if (
+    if (res.isErr()) return res;
+    if (
       !Array.isArray(res.value) ||
       res.value.some((v) => !isObserveAction(v))
     ) {
       return err(`Got non-observe response: ${JSON.stringify(res)}`);
-    } else {
-      return ok(res.value);
     }
+    return ok(res.value);
   }
 }
