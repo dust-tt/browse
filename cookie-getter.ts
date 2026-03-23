@@ -23,7 +23,11 @@ const program = new Command("cookie-getter")
 
     await new Promise<void>((resolve) => {
       page.on("close", async (_) => {
-        const cookies = (await Promise.all(browser.contexts().map(async c => await c.cookies()))).flat();
+        const cookies = (
+          await Promise.all(
+            browser.contexts().map(async (c) => await c.cookies()),
+          )
+        ).flat();
         const json = JSON.stringify(cookies);
         await writeFile(options.cookies, json);
         console.log(`Cookies written to ${options.cookies}`);

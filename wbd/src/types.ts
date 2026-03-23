@@ -1,4 +1,4 @@
-import { Act, Dump, Go, Observe } from "@browse/common/types";
+import type { Act, Dump, Go, Observe } from "@browse/common/types";
 
 export function isTabInput(params: any): params is { tabName: string } {
   return typeof params === "object" && "tabName" in params;

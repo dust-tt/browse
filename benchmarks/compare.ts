@@ -10,7 +10,7 @@
  */
 
 import puppeteer from "puppeteer-core";
-import { spawn, ChildProcess, execSync } from "child_process";
+import { spawn, type ChildProcess, execSync } from "node:child_process";
 
 const LIGHTPANDA_PORT = 9222;
 const ITERATIONS = 5;
@@ -41,9 +41,7 @@ function getChromePath(): string {
     try {
       execSync(`test -f "${p}"`, { stdio: "ignore" });
       return p;
-    } catch {
-      continue;
-    }
+    } catch {}
   }
   throw new Error("Chrome not found");
 }

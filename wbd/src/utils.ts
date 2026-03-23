@@ -1,6 +1,11 @@
-import { err, ok, Result } from "@browse/common/error";
-import { Cookie, ActResult, NetworkEvent, ObserveAction } from "@browse/common/types";
-import { Page, Stagehand } from "@browserbasehq/stagehand";
+import { err, ok, type Result } from "@browse/common/error";
+import type {
+  Cookie,
+  ActResult,
+  NetworkEvent,
+  ObserveAction,
+} from "@browse/common/types";
+import type { Page, Stagehand } from "@browserbasehq/stagehand";
 
 export async function safeStartNetworkRecord(
   page: Page,
@@ -46,9 +51,7 @@ export async function safeStartNetworkRecord(
   }
 }
 
-export async function safeStopNetworkRecord(
-  page: Page,
-): Promise<Result<void>> {
+export async function safeStopNetworkRecord(page: Page): Promise<Result<void>> {
   try {
     const cdpSession = (page as any).__cdpSession;
     if (cdpSession) {
@@ -113,7 +116,9 @@ export async function safeNewPage(
     const res = await safeGoto(page, url);
     return res;
   } catch (e: any) {
-    return err(`Failed to create new page for ${url}: ${e?.message ?? String(e)}`);
+    return err(
+      `Failed to create new page for ${url}: ${e?.message ?? String(e)}`,
+    );
   }
 }
 

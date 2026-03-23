@@ -1,5 +1,5 @@
-import { Stagehand, Page } from "@browserbasehq/stagehand";
-import { chromium, Browser } from "playwright";
+import { Stagehand, type Page } from "@browserbasehq/stagehand";
+import { chromium, type Browser } from "playwright";
 
 interface BenchmarkResult {
   operation: string;
@@ -97,7 +97,7 @@ async function runBenchmark(
 
 // Test 1: Page Navigation (goto)
 async function benchmarkGoto(
-  stagehand: Stagehand,
+  _stagehand: Stagehand,
   stagehandPage: Page,
   playwrightPage?: Page,
 ): Promise<BenchmarkResult> {
@@ -130,7 +130,7 @@ async function benchmarkGoto(
 
 // Test 2: Dumping Page Content
 async function benchmarkDumpContent(
-  stagehand: Stagehand,
+  _stagehand: Stagehand,
   stagehandPage: Page,
   playwrightPage?: Page,
 ): Promise<BenchmarkResult> {
@@ -257,7 +257,7 @@ async function benchmarkAct(
 
 // Test 5: Page URL retrieval
 async function benchmarkGetUrl(
-  stagehand: Stagehand,
+  _stagehand: Stagehand,
   stagehandPage: Page,
   playwrightPage?: Page,
 ): Promise<BenchmarkResult> {
@@ -290,7 +290,7 @@ async function benchmarkGetUrl(
 }
 
 function printResults(results: BenchmarkResult[]): void {
-  console.log("\n" + "=".repeat(80));
+  console.log(`\n${"=".repeat(80)}`);
   console.log("BENCHMARK RESULTS");
   console.log("=".repeat(80));
 
@@ -343,7 +343,7 @@ function printResults(results: BenchmarkResult[]): void {
     }
   }
 
-  console.log("\n" + "=".repeat(80));
+  console.log(`\n${"=".repeat(80)}`);
 }
 
 async function main() {
@@ -355,7 +355,7 @@ async function main() {
   const results: BenchmarkResult[] = [];
 
   // Test Mode 1: Stagehand Only
-  console.log("\n" + "=".repeat(80));
+  console.log(`\n${"=".repeat(80)}`);
   console.log("PHASE 1: Testing with Stagehand Only");
   console.log("=".repeat(80));
 
@@ -400,7 +400,7 @@ async function main() {
   }
 
   // Test Mode 2: With Playwright CDP Connection
-  console.log("\n" + "=".repeat(80));
+  console.log(`\n${"=".repeat(80)}`);
   console.log("PHASE 2: Testing with Playwright CDP Connection");
   console.log("=".repeat(80));
 

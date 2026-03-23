@@ -1,4 +1,4 @@
-import { err, ok, Result } from "./error";
+import { err, ok, type Result } from "./error";
 
 export type Tab = {
   url: string;
@@ -185,8 +185,10 @@ export function isRequestEvent(event: any): event is RequestEvent {
     "options" in event &&
     "url" in event.options &&
     typeof event.options.url === "string" &&
-    "method" in event.options && typeof event.options.method === "string" &&
-    "headers" in event.options && typeof event.options.headers === "object" &&
+    "method" in event.options &&
+    typeof event.options.method === "string" &&
+    "headers" in event.options &&
+    typeof event.options.headers === "object" &&
     ("body" in event.options ? typeof event.options.body === "string" : true)
   );
 }
@@ -205,7 +207,8 @@ export function isResponseEvent(event: any): event is ResponseEvent {
     typeof event.options.url === "string" &&
     "status" in event.options &&
     typeof event.options.status === "number" &&
-    "headers" in event.options && typeof event.options.headers === "object" &&
+    "headers" in event.options &&
+    typeof event.options.headers === "object" &&
     ("body" in event.options ? typeof event.options.body === "string" : true)
   );
 }

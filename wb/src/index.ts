@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { Command, Option } from "commander";
 import { BrowserController } from "./controller";
-import { prettyString, Result } from "@browse/common/error";
+import { prettyString, type Result } from "@browse/common/error";
 import { readFile, writeFile } from "node:fs/promises";
 
 const program = new Command();
@@ -10,8 +10,7 @@ function handleResult<T>(res: Result<T>, exitOnValue = true): T {
   if (res.isErr()) {
     console.error(res.error);
     process.exit(1);
-  }
-  else {
+  } else {
     if (exitOnValue) {
       console.log(prettyString(res.value));
       process.exit(0);
@@ -154,7 +153,9 @@ networkCmd
   .action(async () => {
     const tab = await BrowserController.getCurrentTab();
     if (tab.isErr()) {
-      console.error("No current tab set. Create a tab first with: wb tab new <name> <url>");
+      console.error(
+        "No current tab set. Create a tab first with: wb tab new <name> <url>",
+      );
       process.exit(1);
     }
     const res = await BrowserController.startNetworkRecord();
@@ -168,7 +169,9 @@ networkCmd
   .action(async (options) => {
     const tab = await BrowserController.getCurrentTab();
     if (tab.isErr()) {
-      console.error("No current tab set. Create a tab first with: wb tab new <name> <url>");
+      console.error(
+        "No current tab set. Create a tab first with: wb tab new <name> <url>",
+      );
       process.exit(1);
     }
     const res = await BrowserController.stopNetworkRecord();
@@ -213,7 +216,9 @@ tabCmd
     const res = await BrowserController.listTabs();
     const tabs = handleResult(res, false);
     for (const tab of tabs as any[]) {
-      const label = tab.current ? `tab: ${tab.tabName} [current]` : `tab: ${tab.tabName}`;
+      const label = tab.current
+        ? `tab: ${tab.tabName} [current]`
+        : `tab: ${tab.tabName}`;
       console.log(label);
       console.log(`  ${tab.url}`);
     }

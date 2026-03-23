@@ -1,15 +1,14 @@
-import net from "net";
-import fs from "fs";
+import net from "node:net";
+import fs from "node:fs";
 import { SESSION_DIR } from "@browse/common/constants";
-import path from "path";
+import path from "node:path";
 import { Session } from "./session";
 import { resultToResponse } from "@browse/common/types";
-import { prettyString, Result } from "@browse/common/error";
+import { prettyString } from "@browse/common/error";
 
 export class ServerSocket {
   private server: net.Server;
   private socketPath: string;
-  private result?: Result<unknown>;
   /** Buffer map to handle chunked TCP data from each client */
   private buffers: Map<net.Socket, string> = new Map();
 

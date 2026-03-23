@@ -1,13 +1,13 @@
 import {
-  Cookie,
-  ActResult,
   isCookieInput,
   isSessionMethod,
-  NetworkEvent,
-  ObserveAction,
-  Tab,
+  type Cookie,
+  type ActResult,
+  type NetworkEvent,
+  type ObserveAction,
+  type Tab,
 } from "@browse/common/types";
-import { err, ok, Result } from "@browse/common/error";
+import { err, ok, type Result } from "@browse/common/error";
 import {
   isDumpInput,
   isGoInput,
@@ -17,7 +17,7 @@ import {
   isTabInput,
 } from "./types";
 import { ServerSocket } from "./socket";
-import { Page, Stagehand } from "@browserbasehq/stagehand";
+import { Stagehand, type Page } from "@browserbasehq/stagehand";
 import {
   safeAddCookies,
   safeClose,
@@ -30,8 +30,8 @@ import {
   safeStopNetworkRecord,
 } from "./utils";
 import { SESSION_DIR } from "@browse/common/constants";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import { convert } from "html-to-markdown-node";
 
 export class Session {
@@ -64,10 +64,10 @@ export class Session {
       verbose: 0,
     };
 
-    if (cdpUrl) {
+    if (this.cdpUrl) {
       stagehandOpts.localBrowserLaunchOptions = {
         cdpUrl,
-        headless: true,
+        headless: !debug,
       };
     } else {
       stagehandOpts.localBrowserLaunchOptions = {
@@ -83,7 +83,9 @@ export class Session {
     }
 
     this.stagehand = new Stagehand(stagehandOpts);
-    console.log(`Session initialized${cdpUrl ? ` with CDP URL: ${cdpUrl}` : " with Chrome"}`);
+    console.log(
+      `Session initialized${cdpUrl ? ` with CDP URL: ${cdpUrl}` : " with Chrome"}`,
+    );
   }
 
   static async call(
@@ -191,9 +193,7 @@ export class Session {
   }
 
   static runtimeSeconds(): Result<number> {
-    return ok(
-      (new Date().getTime() - Session.instance.startTime.getTime()) / 1000,
-    );
+    return ok((Date.now() - Session.instance.startTime.getTime()) / 1000);
   }
 
   static async initialize(
@@ -223,7 +223,9 @@ export class Session {
       : err(`Tab ${tabName} does not exist`);
   }
 
-  static listTabs(): Result<{ tabName: string; url: string; current: boolean }[]> {
+  static listTabs(): Result<
+    { tabName: string; url: string; current: boolean }[]
+  > {
     return ok(
       Object.entries(Session.instance.tabs).map(([tabName, tab]) => ({
         tabName,
@@ -358,11 +360,7 @@ export class Session {
       return err("No current tab set");
     }
     const page = Session.instance.pages[Session.instance.currentTab];
-    const res = await safeAct(
-      page,
-      Session.instance.stagehand,
-      instructions,
-    );
+    const res = await safeAct(page, Session.instance.stagehand, instructions);
     if (res.isErr()) {
       return res;
     }

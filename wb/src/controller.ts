@@ -1,21 +1,21 @@
-import { err, ok, Result } from "@browse/common/error";
+import { err, ok, type Result } from "@browse/common/error";
 import { ClientSocket } from "./socket";
 import {
-  Cookie,
-  ActResult,
+  type Cookie,
+  type ActResult,
   isActResult,
   isNamedTab,
   isNetworkEvent,
   isObserveAction,
   isTab,
-  NetworkEvent,
-  ObserveAction,
-  SessionMethod,
-  Tab,
+  type NetworkEvent,
+  type ObserveAction,
+  type SessionMethod,
+  type Tab,
 } from "@browse/common/types";
 import { SESSION_DIR } from "@browse/common/constants";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 
 export class BrowserController {
   private socket: ClientSocket;
@@ -117,7 +117,10 @@ export class BrowserController {
     const res = await BrowserController.send("stopNetworkRecord");
     if (res.isErr()) {
       return res;
-    } else if (!Array.isArray(res.value) || res.value.some((v) => !isNetworkEvent(v))) {
+    } else if (
+      !Array.isArray(res.value) ||
+      res.value.some((v) => !isNetworkEvent(v))
+    ) {
       return err(`Got non-array response: ${JSON.stringify(res)}`);
     } else {
       return ok(res.value);
@@ -244,7 +247,10 @@ export class BrowserController {
     });
     if (res.isErr()) {
       return res;
-    } else if (!Array.isArray(res.value) || res.value.some((v) => !isObserveAction(v))) {
+    } else if (
+      !Array.isArray(res.value) ||
+      res.value.some((v) => !isObserveAction(v))
+    ) {
       return err(`Got non-observe response: ${JSON.stringify(res)}`);
     } else {
       return ok(res.value);

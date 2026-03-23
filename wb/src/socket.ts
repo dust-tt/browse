@@ -1,13 +1,13 @@
-import net from "net";
-import fs from "fs";
-import { err, ok, Result } from "@browse/common/error";
+import net from "node:net";
+import fs from "node:fs";
+import { err, ok, type Result } from "@browse/common/error";
 import { SESSION_DIR } from "@browse/common/constants";
-import path from "path";
-import { spawn } from "child_process";
+import path from "node:path";
+import { spawn } from "node:child_process";
 import {
   isResponse,
   responseToResult,
-  SessionMethod,
+  type SessionMethod,
 } from "@browse/common/types";
 
 function socketPath(sessionName: string): string {
