@@ -135,14 +135,11 @@ export class BrowserController {
     }
   }
 
-  static async listTabs(): Promise<Result<string[]>> {
+  static async listTabs(): Promise<Result<unknown[]>> {
     const res = await BrowserController.send("listTabs");
     if (res.isErr()) {
       return res;
-    } else if (
-      !Array.isArray(res.value) ||
-      res.value.some((v) => typeof v !== "string")
-    ) {
+    } else if (!Array.isArray(res.value)) {
       return err(`Got non-array response: ${JSON.stringify(res)}`);
     } else {
       return ok(res.value);

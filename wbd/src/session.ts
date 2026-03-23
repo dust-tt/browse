@@ -223,8 +223,14 @@ export class Session {
       : err(`Tab ${tabName} does not exist`);
   }
 
-  static listTabs(): Result<string[]> {
-    return ok(Object.keys(Session.instance.tabs));
+  static listTabs(): Result<{ tabName: string; url: string; current: boolean }[]> {
+    return ok(
+      Object.entries(Session.instance.tabs).map(([tabName, tab]) => ({
+        tabName,
+        url: Session.instance.pages[tabName]?.url() ?? tab.url,
+        current: tabName === Session.instance.currentTab,
+      })),
+    );
   }
 
   static getCurrentTab(): Result<{ tabName: string } & Tab> {
