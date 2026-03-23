@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@browse/common": "^1.0.0",
+    "chrome-cookies-secure": "^3.0.1",
     "commander": "^11.1.0"
   },
   "devDependencies": {

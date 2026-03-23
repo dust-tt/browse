@@ -3,6 +3,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { prettyString, type Result } from "@browse/common/error";
 import { Command, Option } from "commander";
 import { BrowserController } from "./controller";
+import { discoverProfiles, extractCookies, pickProfile } from "./cookies";
 
 const program = new Command();
 program.showHelpAfterError();
@@ -81,6 +82,32 @@ sessionCmd
   .action(async (session) => {
     const res = await BrowserController.deleteSession(session);
     handleResult(res);
+  });
+
+sessionCmd
+  .command("cookies")
+  .description("Import cookies from a local Chrome profile into the session")
+  .addOption(sessionOpt)
+  .addOption(dbgOpt)
+  .action(async (options) => {
+    const profilesRes = discoverProfiles();
+    if (profilesRes.isErr()) {
+      console.error(profilesRes.error);
+      process.exit(1);
+    }
+    const profile = await pickProfile(profilesRes.value);
+    console.log(`Extracting cookies from "${profile.displayName}"...`);
+    const cookiesRes = await extractCookies(profile.dirName);
+    if (cookiesRes.isErr()) {
+      console.error(cookiesRes.error);
+      process.exit(1);
+    }
+    console.log(`Found ${cookiesRes.value.length} cookies`);
+    await init(options);
+    const res = await BrowserController.addCookies(cookiesRes.value);
+    handleResult(res, false);
+    console.log("Cookies imported successfully");
+    process.exit(0);
   });
 
 // ===============
