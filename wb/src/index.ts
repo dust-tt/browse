@@ -5,6 +5,7 @@ import { Command, Option } from "commander";
 import { BrowserController } from "./controller";
 
 const program = new Command();
+program.showHelpAfterError();
 
 function handleResult<T>(res: Result<T>, exitOnValue = true): T {
   if (res.isErr()) {
@@ -101,170 +102,115 @@ program
 // TAB
 // ===============
 
-function parseFlags(args: string[]): {
-  flags: Record<string, string | true>;
-  rest: string[];
-} {
-  const flags: Record<string, string | true> = {};
-  const rest: string[] = [];
-  let i = 0;
-  while (i < args.length) {
-    const arg = args[i];
-    if (arg.startsWith("-")) {
-      const key = arg.replace(/^-+/, "");
-      if (i + 1 < args.length && !args[i + 1].startsWith("-")) {
-        flags[key] = args[i + 1];
-        i += 2;
-      } else {
-        flags[key] = true;
-        i += 1;
-      }
-    } else {
-      rest.push(arg);
-      i += 1;
-    }
-  }
-  return { flags, rest };
-}
-
-program
+const tabCmd = program
   .command("tab")
   .description("Manage and interact with browser tabs")
   .addOption(sessionOpt)
   .addOption(dbgOpt)
-  .allowUnknownOption()
-  .allowExcessArguments()
-  .argument(
-    "<nameOrAction>",
-    "Tab name or management action (list, new, close)",
-  )
-  .argument("[args...]", "Action and arguments")
-  .action(async (nameOrAction: string, args: string[], options: any) => {
-    // ---- Management commands ----
-    if (nameOrAction === "list") {
-      await init(options);
-      const res = await BrowserController.listTabs();
-      const tabs = handleResult(res, false);
-      for (const tab of tabs as any[]) {
-        console.log(`tab: ${tab.tabName}`);
-        console.log(`  ${tab.url}`);
-      }
-      process.exit(0);
+  .hook("preAction", async (cmd) => {
+    await init(cmd.opts());
+  });
+
+tabCmd
+  .command("list")
+  .description("List all tabs")
+  .action(async () => {
+    const res = await BrowserController.listTabs();
+    const tabs = handleResult(res, false);
+    for (const tab of tabs as any[]) {
+      console.log(`tab: ${tab.tabName}`);
+      console.log(`  ${tab.url}`);
     }
+    process.exit(0);
+  });
 
-    if (nameOrAction === "new") {
-      if (args.length < 2) {
-        console.error("Usage: wb tab new <name> <url>");
-        process.exit(1);
-      }
-      await init(options);
-      const res = await BrowserController.newTab(args[0], args[1]);
-      handleResult(res);
-      return;
-    }
+tabCmd
+  .command("new")
+  .description("Create a new tab and navigate to a URL")
+  .argument("<name>", "Name of the tab")
+  .argument("<url>", "URL to navigate to")
+  .action(async (name, url) => {
+    const res = await BrowserController.newTab(name, url);
+    handleResult(res);
+  });
 
-    if (nameOrAction === "close") {
-      if (args.length < 1) {
-        console.error("Usage: wb tab close <name>");
-        process.exit(1);
-      }
-      await init(options);
-      const res = await BrowserController.closeTab(args[0]);
-      handleResult(res);
-      return;
-    }
+tabCmd
+  .command("close")
+  .description("Close a tab")
+  .argument("<name>", "Name of the tab")
+  .action(async (name) => {
+    const res = await BrowserController.closeTab(name);
+    handleResult(res);
+  });
 
-    // ---- Tab-specific commands: nameOrAction is the tab name ----
-    const tabName = nameOrAction;
-    if (args.length < 1) {
-      console.error(
-        `Usage: wb tab <name> <action>\nActions: go, dump, act, observe, network`,
-      );
-      process.exit(1);
-    }
+tabCmd
+  .command("go")
+  .description("Navigate a tab to a URL")
+  .argument("<name>", "Name of the tab")
+  .argument("<url>", "URL to navigate to")
+  .action(async (name, url) => {
+    const res = await BrowserController.go(name, url);
+    handleResult(res);
+  });
 
-    const action = args[0];
-    const actionArgs = args.slice(1);
+tabCmd
+  .command("dump")
+  .description("Dump tab content")
+  .argument("<name>", "Name of the tab")
+  .option("-h, --html", "Dump as HTML")
+  .option("-o, --offset <offset>", "Offset to start dumping from", parseInt)
+  .option("-l, --limit <limit>", "Max characters to return", parseInt)
+  .action(async (name, options) => {
+    const limit = options.limit ?? 8192;
+    const offset = options.offset ?? 0;
+    const res = await BrowserController.dump(name, options.html, offset, limit);
+    handleResult(res);
+  });
 
-    await init(options);
+tabCmd
+  .command("act")
+  .description("Perform an action on a tab")
+  .argument("<name>", "Name of the tab")
+  .argument("<instructions>", "Instructions for the action to perform")
+  .action(async (name, instructions) => {
+    const res = await BrowserController.act(name, instructions);
+    handleResult(res);
+  });
 
-    switch (action) {
-      case "go": {
-        if (actionArgs.length < 1) {
-          console.error("Usage: wb tab <name> go <url>");
-          process.exit(1);
-        }
-        const res = await BrowserController.go(tabName, actionArgs[0]);
-        handleResult(res);
-        break;
-      }
+tabCmd
+  .command("observe")
+  .description("Observe available actions on a tab")
+  .argument("<name>", "Name of the tab")
+  .argument("<instructions>", "Instructions describing what to observe")
+  .action(async (name, instructions) => {
+    const res = await BrowserController.observe(name, instructions);
+    handleResult(res);
+  });
 
-      case "dump": {
-        const { flags } = parseFlags(actionArgs);
-        const html = "h" in flags || "html" in flags;
-        const offset = flags.o ?? flags.offset;
-        const res = await BrowserController.dump(
-          tabName,
-          html,
-          offset ? parseInt(String(offset), 10) : 0,
-        );
-        handleResult(res);
-        break;
-      }
+const networkCmd = tabCmd
+  .command("network")
+  .description("Record network events on a tab");
 
-      case "act": {
-        if (actionArgs.length < 1) {
-          console.error("Usage: wb tab <name> act <instructions>");
-          process.exit(1);
-        }
-        const res = await BrowserController.act(tabName, actionArgs.join(" "));
-        handleResult(res);
-        break;
-      }
+networkCmd
+  .command("start")
+  .description("Start recording network events")
+  .argument("<name>", "Name of the tab")
+  .action(async (name) => {
+    const res = await BrowserController.startNetworkRecord(name);
+    handleResult(res);
+  });
 
-      case "observe": {
-        if (actionArgs.length < 1) {
-          console.error("Usage: wb tab <name> observe <instructions>");
-          process.exit(1);
-        }
-        const res = await BrowserController.observe(
-          tabName,
-          actionArgs.join(" "),
-        );
-        handleResult(res);
-        break;
-      }
-
-      case "network": {
-        if (actionArgs.length < 1) {
-          console.error("Usage: wb tab <name> network <start|stop>");
-          process.exit(1);
-        }
-        const subAction = actionArgs[0];
-        if (subAction === "start") {
-          const res = await BrowserController.startNetworkRecord(tabName);
-          handleResult(res);
-        } else if (subAction === "stop") {
-          const { flags } = parseFlags(actionArgs.slice(1));
-          const output = String(flags.o ?? flags.output ?? "network.json");
-          const res = await BrowserController.stopNetworkRecord(tabName);
-          const content = handleResult(res, false);
-          await writeFile(output, JSON.stringify(content, null, 2));
-          console.log(`Saved network activity to ${output}`);
-          process.exit(0);
-        } else {
-          console.error("Usage: wb tab <name> network <start|stop>");
-          process.exit(1);
-        }
-        break;
-      }
-
-      default:
-        console.error(
-          `Unknown action: ${action}\nActions: go, dump, act, observe, network`,
-        );
-        process.exit(1);
-    }
+networkCmd
+  .command("stop")
+  .description("Stop recording and save network events")
+  .argument("<name>", "Name of the tab")
+  .option("-o, --output <file>", "Output file", "network.json")
+  .action(async (name, options) => {
+    const res = await BrowserController.stopNetworkRecord(name);
+    const content = handleResult(res, false);
+    await writeFile(options.output, JSON.stringify(content, null, 2));
+    console.log(`Saved network activity to ${options.output}`);
+    process.exit(0);
   });
 
 program.parse();

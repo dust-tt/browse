@@ -166,8 +166,9 @@ export class BrowserController {
     tabName: string,
     html: boolean = false,
     offset: number = 0,
+    limit: number = 8192,
   ): Promise<Result<string>> {
-    const res = await BrowserController.send("dump", { tabName, html, offset });
+    const res = await BrowserController.send("dump", { tabName, html, offset, limit });
     if (res.isErr()) return res;
     if (typeof res.value !== "string") {
       return err(`Got non-string response: ${JSON.stringify(res)}`);

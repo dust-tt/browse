@@ -26,6 +26,7 @@ export type Dump = {
   options: {
     html: boolean;
     offset?: number;
+    limit?: number;
   };
 };
 

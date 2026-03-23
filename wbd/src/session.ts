@@ -136,7 +136,7 @@ export class Session {
         }
       case "dump":
         if (isDumpInput(params)) {
-          return await Session.dump(params.tabName, params.html, params.offset);
+          return await Session.dump(params.tabName, params.html, params.offset, params.limit);
         } else {
           return err("Invalid parameters");
         }
@@ -275,6 +275,7 @@ export class Session {
     tabName: string,
     html: boolean,
     offset: number = 0,
+    limit: number = 8192,
   ): Promise<Result<string>> {
     const pageRes = Session.getPage(tabName);
     if (pageRes.isErr()) return pageRes;
@@ -284,7 +285,7 @@ export class Session {
     Session.instance.tabs[tabName].actions.push({
       type: "dump",
       timestamp: new Date(),
-      options: { html, offset },
+      options: { html, offset, limit },
     });
     // Strip SVG elements and data URIs to reduce noise in output.
     const cleaned = res.value.replace(/<svg[\s\S]*?<\/svg>/gi, "");
@@ -293,7 +294,11 @@ export class Session {
       // Remove any remaining base64 SVG image references in markdown.
       text = text.replace(/!\[[^\]]*\]\(data:image\/svg\+xml[^)]*\)/g, "");
     }
-    return ok(text.slice(offset, 8196 + offset));
+    const sliced = text.slice(offset, offset + limit);
+    const remaining = Math.max(0, text.length - offset - limit);
+    const url = page.url();
+    const header = `---\nurl: ${url}\noffset: ${offset}\nlimit: ${limit}\nremaining: ${remaining}\n---\n`;
+    return ok(header + sliced);
   }
 
   static async go(tabName: string, url: string): Promise<Result<void>> {
