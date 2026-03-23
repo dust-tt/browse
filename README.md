@@ -88,7 +88,8 @@ wb session delete [session]              # Delete a session
 ```bash
 wb go <url>                              # Navigate to a URL
 wb dump [-h] [-o offset]                 # Dump current tab content (max 8196 chars, use --offset to paginate, --html for raw HTML)
-wb interact <instructions>               # Interact with the current tab using natural language
+wb act <instructions>                    # Perform an action on the current tab using natural language
+wb observe <instructions>                # Observe available actions on the current tab
 wb runtime                               # Get the runtime in seconds of the current session
 ```
 

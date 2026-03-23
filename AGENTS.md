@@ -37,10 +37,9 @@
 ```
 browse/
 ├── common/              # Shared library (@browse/common)
-│   ├── types.ts         # Core types: Tab, Action, Cookie, NetworkEvent, SessionMethod, Response
+│   ├── types.ts         # Core types: Tab, Action, ActResult, ObserveAction, Cookie, NetworkEvent, SessionMethod, Response
 │   ├── error.ts         # Result<T> monad (Ok/Err), BrowserError, prettyString()
-│   ├── constants.ts     # SESSION_DIR path (~/.config/wb/sessions)
-│   └── browser.ts       # Browser type enum (chrome | lightpanda)
+│   └── constants.ts     # SESSION_DIR path (~/.config/wb/sessions)
 │
 ├── wb/                  # CLI package (wb binary)
 │   └── src/
@@ -53,9 +52,8 @@ browse/
 │       ├── index.ts     # Entry point — parses args, calls Session.initialize()
 │       ├── session.ts   # Session singleton — manages Stagehand, tabs, pages, network recording
 │       ├── socket.ts    # ServerSocket — Unix socket server, routes requests to Session.call()
-│       ├── types.ts     # Input validation guards (isTabInput, isDumpInput, etc.)
-│       ├── utils.ts     # Safe wrappers around Stagehand/Playwright operations
-│       └── lightpanda.ts # Lightpanda browser process management
+│       ├── types.ts     # Input validation guards (isTabInput, isDumpInput, isActInput, etc.)
+│       └── utils.ts     # Safe wrappers around Stagehand/Playwright operations
 │
 ├── benchmarks/          # Performance benchmarks
 │   ├── compare.ts       # Chrome vs Lightpanda startup/navigation comparison
@@ -73,9 +71,9 @@ browse/
 |---------|------|-----------------|----------|
 | `common` | `@browse/common` | (none, just Node types) | Shared types, error handling, constants |
 | `wb` | `wb` | `@browse/common`, `commander` | `wb` CLI binary |
-| `wbd` | `wbd` | `@browse/common`, `@anonx3247/stagehand`, `html-to-markdown-node`, `zod` | `wbd` daemon binary |
+| `wbd` | `wbd` | `@browse/common`, `@browserbasehq/stagehand`, `html-to-markdown-node`, `zod` | `wbd` daemon binary |
 
-**Import convention**: Packages import from `@browse/common/types`, `@browse/common/error`, `@browse/common/constants`, `@browse/common/browser` (subpath exports defined in `common/package.json`).
+**Import convention**: Packages import from `@browse/common/types`, `@browse/common/error`, `@browse/common/constants` (subpath exports defined in `common/package.json`).
 
 ## Build & Development
 
@@ -137,7 +135,8 @@ The full list of daemon methods is defined in `common/types.ts` as `SESSION_METH
 | `closeTab` | `{ tabName }` | `void` |
 | `dump` | `{ html, offset? }` | `string` (max 8196 chars) |
 | `go` | `{ url }` | `void` |
-| `interact` | `{ instructions }` | `{ description, url }` |
+| `act` | `{ instructions }` | `{ action, url }` |
+| `observe` | `{ instructions }` | `ObserveAction[]` |
 | `deleteSession` | none | `void` (daemon exits) |
 | `startNetworkRecord` | none | `void` |
 | `stopNetworkRecord` | none | `NetworkEvent[]` |
@@ -155,12 +154,13 @@ To add a new command/method end-to-end:
 
 ### Stagehand Usage
 
-The daemon uses `@anonx3247/stagehand` (a fork of Stagehand). Key points:
+The daemon uses `@browserbasehq/stagehand`. Key points:
 - `stagehand.init()` launches the browser
 - `stagehand.context.newPage()` creates Playwright pages
-- `stagehand.act(instructions, { page })` performs AI-powered interactions
+- `stagehand.act(instructions, { page })` performs AI-powered actions (with observe+act fallback)
+- `stagehand.observe(instructions, { page })` returns available actions with selectors
 - Pages use Playwright's API: `page.goto()`, `page.url()`, `page.locator()`, `page.close()`
-- Content dumping: gets `body` innerHTML via `page.locator("body").innerHtml()`, optionally converts to Markdown via `html-to-markdown-node`
+- Content dumping: gets `body` innerHTML via `page.locator("body").innerHtml()`, strips SVG elements, optionally converts to Markdown via `html-to-markdown-node`
 - Cookies are set via CDP: `page.sendCDP("Network.setCookie", cookie)`
 
 ### Browser Backends
@@ -201,12 +201,12 @@ Run benchmarks with: `npx tsx benchmarks/compare.ts`
 | Variable | Purpose |
 |----------|---------|
 | `BROWSER` | Set to `lightpanda` to use Lightpanda instead of Chrome |
-| `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | Required by Stagehand for AI-powered `interact`/`act` operations |
+| `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` | Required by Stagehand for AI-powered `act`/`observe` operations |
 
 ## Common Pitfalls
 
 - **Build order**: Always build `common` before `wb`/`wbd`. Use `npm run build` (not individual workspace builds) to ensure correct order.
 - **Stale sockets**: If `wbd` crashes, the socket file may remain. `wb` handles this by detecting stale sockets and re-creating sessions in `ClientSocket.ensureSession()`.
 - **Session must exist**: Most `wb` commands require an existing session. Create one first with `wb session create`.
-- **Tab required**: `dump`, `go`, and `interact` all require a current tab. Create one with `wb tab new <name> <url>` first.
+- **Tab required**: `dump`, `go`, `act`, and `observe` all require a current tab. Create one with `wb tab new <name> <url>` first.
 - **60-second timeout**: Socket requests timeout after 60 seconds (except `deleteSession` which times out after 100ms since the daemon exits immediately).
