@@ -1,4 +1,4 @@
-import { Dump, Go, Interact } from "@browse/common/types";
+import { Dump, Go, Interact, Observe } from "@browse/common/types";
 
 export function isTabInput(params: any): params is { tabName: string } {
   return typeof params === "object" && "tabName" in params;
@@ -33,6 +33,14 @@ export function isGoInput(params: any): params is Go["options"] {
 }
 
 export function isInteractInput(params: any): params is Interact["options"] {
+  return (
+    typeof params === "object" &&
+    "instructions" in params &&
+    typeof params.instructions === "string"
+  );
+}
+
+export function isObserveInput(params: any): params is Observe["options"] {
   return (
     typeof params === "object" &&
     "instructions" in params &&

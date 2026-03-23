@@ -1,5 +1,5 @@
 import { err, ok, Result } from "@browse/common/error";
-import { Cookie, InteractResult, NetworkEvent } from "@browse/common/types";
+import { Cookie, InteractResult, NetworkEvent, ObserveAction } from "@browse/common/types";
 import { Page, Stagehand } from "@browserbasehq/stagehand";
 
 export async function safeStartNetworkRecord(
@@ -134,20 +134,52 @@ export async function safeInteract(
   try {
     const res = await stagehand.act(instructions, { page });
 
-    if (!res.success) {
-      const details = [
-        `Failed to interact: ${instructions}`,
-        res.message ? `message: ${res.message}` : null,
-        res.actionDescription ? `action: ${res.actionDescription}` : null,
-      ]
-        .filter(Boolean)
-        .join("\n");
-      return err(details);
+    if (res.success) {
+      return ok({ action: res.actionDescription, url: page.url() });
     }
-    return ok({ description: res.actionDescription, url: page.url() });
+
+    // Fallback: use observe to find the element, then act on it directly.
+    const observed = await stagehand.observe(instructions, { page });
+    if (observed.length > 0) {
+      const fallback = await stagehand.act(observed[0], { page });
+      if (fallback.success) {
+        return ok({ action: fallback.actionDescription, url: page.url() });
+      }
+    }
+
+    const details = [
+      `Failed to interact: ${instructions}`,
+      res.message ? `message: ${res.message}` : null,
+      res.actionDescription ? `action: ${res.actionDescription}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    return err(details);
   } catch (e: any) {
     const message = e?.message ?? String(e);
     const details = `Failed to interact: ${instructions}\n${message}`;
+    return err(details);
+  }
+}
+
+export async function safeObserve(
+  page: Page,
+  stagehand: Stagehand,
+  instructions: string,
+): Promise<Result<ObserveAction[]>> {
+  try {
+    const res = await stagehand.observe(instructions, { page });
+    return ok(
+      res.map((a) => ({
+        selector: a.selector,
+        description: a.description,
+        method: a.method,
+        arguments: a.arguments,
+      })),
+    );
+  } catch (e: any) {
+    const message = e?.message ?? String(e);
+    const details = `Failed to observe: ${instructions}\n${message}`;
     return err(details);
   }
 }

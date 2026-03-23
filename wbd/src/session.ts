@@ -4,6 +4,7 @@ import {
   isCookieInput,
   isSessionMethod,
   NetworkEvent,
+  ObserveAction,
   Tab,
 } from "@browse/common/types";
 import { err, ok, Result } from "@browse/common/error";
@@ -12,6 +13,7 @@ import {
   isGoInput,
   isInteractInput,
   isNewTabInput,
+  isObserveInput,
   isTabInput,
 } from "./types";
 import { ServerSocket } from "./socket";
@@ -23,6 +25,7 @@ import {
   safeGoto,
   safeInteract,
   safeNewPage,
+  safeObserve,
   safeStartNetworkRecord,
   safeStopNetworkRecord,
 } from "./utils";
@@ -142,6 +145,12 @@ export class Session {
       case "interact":
         if (isInteractInput(params)) {
           return Session.interact(params.instructions);
+        } else {
+          return err("Invalid parameters");
+        }
+      case "observe":
+        if (isObserveInput(params)) {
+          return Session.observe(params.instructions);
         } else {
           return err("Invalid parameters");
         }
@@ -360,6 +369,29 @@ export class Session {
     });
     // The interaction may have changed the page url (e.g. clicking a link)
     Session.instance.tabs[Session.instance.currentTab].url = page.url();
+    return ok(res.value);
+  }
+
+  static async observe(instructions: string): Promise<Result<ObserveAction[]>> {
+    if (!Session.instance.currentTab) {
+      return err("No current tab set");
+    }
+    const page = Session.instance.pages[Session.instance.currentTab];
+    const res = await safeObserve(
+      page,
+      Session.instance.stagehand,
+      instructions,
+    );
+    if (res.isErr()) {
+      return res;
+    }
+    Session.instance.tabs[Session.instance.currentTab].actions.push({
+      type: "observe",
+      timestamp: new Date(),
+      options: {
+        instructions,
+      },
+    });
     return ok(res.value);
   }
 }

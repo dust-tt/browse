@@ -127,6 +127,17 @@ program
     handleResult(res);
   });
 
+program
+  .command("observe")
+  .description("Observe available actions on the current tab")
+  .argument("<instructions>", "Instructions describing what to observe")
+  .addOption(sessionOpt)
+  .addOption(dbgOpt)
+  .action(async (instructions, options) => {
+    await init(options);
+    const res = await BrowserController.observe(instructions);
+    handleResult(res);
+  });
 
 const networkCmd = program
   .command("network")

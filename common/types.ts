@@ -46,22 +46,47 @@ export type Interact = {
 };
 
 export type InteractResult = {
-  description: string;
+  action: string;
   url: string;
 };
+
+export type Observe = {
+  type: "observe";
+  timestamp: Date;
+  options: {
+    instructions: string;
+  };
+};
+
+export type ObserveAction = {
+  selector: string;
+  description: string;
+  method?: string;
+  arguments?: string[];
+};
+
+export function isObserveAction(action: any): action is ObserveAction {
+  return (
+    typeof action === "object" &&
+    "selector" in action &&
+    typeof action.selector === "string" &&
+    "description" in action &&
+    typeof action.description === "string"
+  );
+}
 
 export function isInteractResult(result: any): result is InteractResult {
   return (
     typeof result === "object" &&
-    "description" in result &&
-    typeof result.description === "string" &&
+    "action" in result &&
+    typeof result.action === "string" &&
     "url" in result &&
     typeof result.url === "string"
   );
 }
 
 export interface Action {
-  type: (Dump | Go | Interact)["type"];
+  type: (Dump | Go | Interact | Observe)["type"];
   timestamp: Date;
   options: Record<string, any>;
 }
@@ -105,6 +130,7 @@ export const SESSION_METHODS = [
   "dump",
   "go",
   "interact",
+  "observe",
   "deleteSession",
   "startNetworkRecord",
   "stopNetworkRecord",

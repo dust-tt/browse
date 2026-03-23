@@ -6,8 +6,10 @@ import {
   isInteractResult,
   isNamedTab,
   isNetworkEvent,
+  isObserveAction,
   isTab,
   NetworkEvent,
+  ObserveAction,
   SessionMethod,
   Tab,
 } from "@browse/common/types";
@@ -234,6 +236,19 @@ export class BrowserController {
       return res;
     } else if (!isInteractResult(res.value)) {
       return err(`Got non-interact response: ${JSON.stringify(res)}`);
+    } else {
+      return ok(res.value);
+    }
+  }
+
+  static async observe(instructions: string): Promise<Result<ObserveAction[]>> {
+    const res = await BrowserController.send("observe", {
+      instructions,
+    });
+    if (res.isErr()) {
+      return res;
+    } else if (!Array.isArray(res.value) || res.value.some((v) => !isObserveAction(v))) {
+      return err(`Got non-observe response: ${JSON.stringify(res)}`);
     } else {
       return ok(res.value);
     }
