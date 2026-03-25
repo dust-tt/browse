@@ -24,6 +24,7 @@ import {
   safeContent,
   safeGoto,
   safeAct,
+  safeAgentAct,
   safeNewPage,
   safeObserve,
   safeStartNetworkRecord,
@@ -148,7 +149,7 @@ export class Session {
         }
       case "act":
         if (isActInput(params)) {
-          return Session.act(params.tabName, params.instructions);
+          return Session.act(params.tabName, params.instructions, (params as any).agent);
         } else {
           return err("Invalid parameters");
         }
@@ -322,11 +323,14 @@ export class Session {
   static async act(
     tabName: string,
     instructions: string,
+    agent: boolean = false,
   ): Promise<Result<ActResult>> {
     const pageRes = Session.getPage(tabName);
     if (pageRes.isErr()) return pageRes;
     const page = pageRes.value;
-    const res = await safeAct(page, Session.instance.stagehand, instructions);
+    const res = agent
+      ? await safeAgentAct(page, Session.instance.stagehand, instructions)
+      : await safeAct(page, Session.instance.stagehand, instructions);
     if (res.isErr()) return res;
     Session.instance.tabs[tabName].actions.push({
       type: "act",

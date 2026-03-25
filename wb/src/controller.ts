@@ -185,8 +185,9 @@ export class BrowserController {
   static async act(
     tabName: string,
     instructions: string,
+    agent: boolean = false,
   ): Promise<Result<ActResult>> {
-    const res = await BrowserController.send("act", { tabName, instructions });
+    const res = await BrowserController.send("act", { tabName, instructions, agent });
     if (res.isErr()) return res;
     if (!isActResult(res.value)) {
       return err(`Got non-act response: ${JSON.stringify(res)}`);

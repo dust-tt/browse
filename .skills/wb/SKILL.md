@@ -8,6 +8,25 @@ allowed-tools: Bash(wb *)
 
 `wb` provides web browsing through a shared daemon session. Use it to search the web, read pages, and interact with websites.
 
+## Session Setup
+
+If no session is running (`wb tab list` fails), create one:
+
+```bash
+wb session create -c ~/cookies.json -d
+```
+
+This loads saved cookies and opens a visible browser window.
+
+If a session is misbehaving (commands hang, errors), delete and recreate:
+
+```bash
+wb session delete
+wb session create -c ~/cookies.json -d
+```
+
+Only do this if commands are failing — it kills all open tabs.
+
 ## Important: Shared Session
 
 You are using the **default session** which may be shared with other agents. Always:
@@ -85,7 +104,7 @@ Use `remaining` to know if there's more content. Paginate with `-o <offset>` if 
 ### Interacting with Pages
 
 ```bash
-wb tab act <name> <instructions>          # Perform an action (click, type, etc.)
+wb tab act <name> -a <instructions>       # Perform an action (click, type, etc.)
 wb tab observe <name> <instructions>      # List available actions matching instructions
 ```
 
@@ -94,8 +113,8 @@ wb tab observe <name> <instructions>      # List available actions matching inst
 Examples:
 
 ```bash
-wb tab act my-tab "click the Sign In button"
-wb tab act my-tab "type hello into the search box"
+wb tab act my-tab -a "click the Sign In button"
+wb tab act my-tab -a "type hello into the search box"
 wb tab observe my-tab "find all navigation links"
 ```
 

@@ -171,6 +171,31 @@ export async function safeAct(
   }
 }
 
+export async function safeAgentAct(
+  page: Page,
+  stagehand: Stagehand,
+  instructions: string,
+): Promise<Result<ActResult>> {
+  try {
+    const agent = stagehand.agent({ mode: "cua", model: "anthropic/claude-sonnet-4-6" });
+    const res = await agent.execute({ instruction: instructions, page });
+
+    if (!res.success) {
+      const details = [
+        `Agent failed: ${instructions}`,
+        res.message ? `message: ${res.message}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n");
+      return err(details);
+    }
+    return ok({ action: res.message, url: page.url() });
+  } catch (e: any) {
+    const message = e?.message ?? String(e);
+    return err(`Agent failed: ${instructions}\n${message}`);
+  }
+}
+
 export async function safeObserve(
   page: Page,
   stagehand: Stagehand,

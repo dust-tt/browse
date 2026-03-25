@@ -110,6 +110,30 @@ sessionCmd
     process.exit(0);
   });
 
+sessionCmd
+  .command("cookies-dump")
+  .description("Extract cookies from a Chrome profile and save to a JSON file")
+  .option("-o, --output <file>", "Output file", "cookies.json")
+  .action(async (options) => {
+    const profilesRes = discoverProfiles();
+    if (profilesRes.isErr()) {
+      console.error(profilesRes.error);
+      process.exit(1);
+    }
+    const profile = await pickProfile(profilesRes.value);
+    console.log(`Extracting cookies from "${profile.displayName}"...`);
+    const cookiesRes = await extractCookies(profile.dirName);
+    if (cookiesRes.isErr()) {
+      console.error(cookiesRes.error);
+      process.exit(1);
+    }
+    await writeFile(options.output, JSON.stringify(cookiesRes.value, null, 2));
+    console.log(
+      `Saved ${cookiesRes.value.length} cookies to ${options.output}`,
+    );
+    process.exit(0);
+  });
+
 // ===============
 // RUNTIME
 // ===============
@@ -199,8 +223,9 @@ tabCmd
   .description("Perform an action on a tab")
   .argument("<name>", "Name of the tab")
   .argument("<instructions>", "Instructions for the action to perform")
-  .action(async (name, instructions) => {
-    const res = await BrowserController.act(name, instructions);
+  .option("-a, --agent", "Use CUA agent mode (screenshot-based)")
+  .action(async (name, instructions, options) => {
+    const res = await BrowserController.act(name, instructions, options.agent);
     handleResult(res);
   });
 
